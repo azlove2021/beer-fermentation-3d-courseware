@@ -10,9 +10,9 @@ const EXE = 'C:/Users/azlove2112/AppData/Local/ms-playwright/chromium-1234/chrom
 const HTML = 'D:/AAA-Workbudy/brewery-courseware/啤酒发酵工厂·生产流程课件.html';
 
 const PROBES = [
-  ['地面左前', 640, 620], ['地面中', 820, 660], ['地面右后', 1000, 520],
-  ['背景左上', 120, 210], ['背景右', 1120, 240], ['发酵罐', 1010, 400],
-  ['铜锅', 545, 330], ['原料仓', 300, 200]
+  ['地面左前', 600, 640], ['地面中', 800, 660], ['地面右后', 980, 520],
+  ['背景上', 300, 170], ['背景右', 1120, 200], ['发酵罐', 900, 420],
+  ['铜锅', 500, 300], ['厂房顶', 700, 200]
 ];
 
 (async () => {
@@ -76,8 +76,8 @@ const PROBES = [
     });
 
     let sum = 0, n = 0, blown = 0, dark = 0;
-    for (let y = 70; y < img.height - 140; y += 4) {
-      for (let x = 90; x < img.width - 20; x += 4) {
+    for (let y = 140; y < 726; y += 4) {
+      for (let x = 100; x < 1185; x += 4) {
         const p = at(x, y); const L = lum(p);
         sum += L; n++;
         if (L > 235) blown++;

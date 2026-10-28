@@ -26,14 +26,14 @@ const BRUSH = brushedTex();
 
 const MAT = {
   steel: new THREE.MeshStandardMaterial({ 
-    color: 0xd6dee2, metalness: 1.0, roughness: 0.24, envMapIntensity: 0.95
+    color: 0xdae4ee, metalness: 1.0, roughness: 0.20, envMapIntensity: 1.45
   }),
   steelBody: new THREE.MeshStandardMaterial({ 
-    color: 0xc4ced3, metalness: 0.98, roughness: 0.30,
-    roughnessMap: BRUSH, envMapIntensity: 1.18, side: THREE.DoubleSide
+    color: 0xccd8e3, metalness: 0.98, roughness: 0.26,
+    roughnessMap: BRUSH, envMapIntensity: 1.30, side: THREE.DoubleSide
   }),
   steelDark: new THREE.MeshStandardMaterial({ 
-    color: 0x8e9aa0, metalness: 1.0, roughness: 0.40, envMapIntensity: 1.0
+    color: 0xb0bfcb, metalness: 1.0, roughness: 0.38, envMapIntensity: 1.1
   }),
   copper: new THREE.MeshStandardMaterial({ 
     color: 0xc47843, metalness: 1.0, roughness: 0.28, envMapIntensity: 1.10
@@ -42,9 +42,9 @@ const MAT = {
     color: 0xb86f3e, metalness: 1.0, roughness: 0.33, roughnessMap: BRUSH,
     envMapIntensity: 1.05, side: THREE.DoubleSide
   }),
-  paint: new THREE.MeshStandardMaterial({  color: 0x1a272c, roughness: 0.52, metalness: 0.35 }),
-  paintLite: new THREE.MeshStandardMaterial({  color: 0x2b3d43, roughness: 0.48, metalness: 0.4 }),
-  rubber: new THREE.MeshStandardMaterial({  color: 0x101618, roughness: 0.85, metalness: 0.0 }),
+  paint: new THREE.MeshStandardMaterial({  color: 0x44586b, roughness: 0.55, metalness: 0.30 }),
+  paintLite: new THREE.MeshStandardMaterial({  color: 0x5a7086, roughness: 0.50, metalness: 0.35 }),
+  rubber: new THREE.MeshStandardMaterial({  color: 0x2c3a46, roughness: 0.85, metalness: 0.0 }),
   brass: new THREE.MeshStandardMaterial({  color: 0xd8a45a, metalness: 1.0, roughness: 0.30, envMapIntensity: 1.4 }),
   glass: new THREE.MeshPhysicalMaterial({ 
     color: 0xa8e4ff, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.15,
@@ -56,7 +56,7 @@ const MAT = {
     roughness: 0.18, metalness: 0.0, transparent: true, opacity: 0.88
   }),
   beer: new THREE.MeshStandardMaterial({ 
-    color: 0xffa626, emissive: 0xff8a10, emissiveIntensity: 0.38,
+    color: 0xf0a02a, emissive: 0xd97a06, emissiveIntensity: 0.22,
     roughness: 0.10, metalness: 0.0, transparent: true, opacity: 0.44,
     depthWrite: false, side: THREE.DoubleSide
   }),

@@ -1,0 +1,1 @@
+(function(){ document.getElementById('btnLabels').click(); document.getElementById('btnImmersive').click(); return {labels:document.getElementById('labels').className, immersive:document.getElementById('app').className}; })()

@@ -156,7 +156,7 @@ const STATIONS = [
 
 /* ---- 视角预设（相机关键帧）---- */
 const VIEWS = {
-  overview: { tx: 0.95, ty: 1.55, tz: 0, az: 0.74, pol: 1.03, dist: 20.8 },
+  overview: { tx: 1.25, ty: 1.80, tz: 0, az: 0.72, pol: 1.05, dist: 19.6 },
   cell:     { tx: 3.60, ty: 1.90, tz: 0, az: 0.40, pol: 1.24, dist: 6.6 }
 };
 

@@ -7,20 +7,20 @@
 'use strict';
 
 const LOOK = {
-  exposure: 0.62,
+  exposure: 0.86,
   bloomOn: true,
-  bloomThreshold: 1.06,
+  bloomThreshold: 1.30,
   bloomKnee: 0.52,
-  bloomStrength: 0.30,
+  bloomStrength: 0.12,
   bloomRadius: 1.0,
   bloomLevels: QUALITY.perf ? 2 : 3,
   gradeOn: true,
-  contrast: 1.07,
-  saturation: 1.06,
-  lift: [0.003, 0.008, 0.009],
-  gain: [1.035, 1.005, 0.965],
-  vignette: 0.40,
-  bgGlow: 0.55,
+  contrast: 1.10,
+  saturation: 1.04,
+  lift: [0.004, 0.006, 0.010],
+  gain: [0.995, 1.000, 1.010],
+  vignette: 0.07,
+  bgGlow: 0.0,
   debug: 0
 };
 

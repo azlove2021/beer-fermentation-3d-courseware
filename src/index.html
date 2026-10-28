@@ -11,25 +11,27 @@
 <body>
 <div id="app">
 
-  <div id="stage">
-    <canvas id="gl"></canvas>
-    <div id="labels"></div>
-    <div id="stageVignette"></div>
-  </div>
-
   <header id="topbar">
     <div class="brand">
       <div class="mark"><i></i><i></i><i></i></div>
       <div class="brand-txt">
         <h1>啤酒发酵工厂</h1>
-        <p>高中生物 · 细胞呼吸与发酵工程 · 生产流程三维演示</p>
+        <p>高中生物 · 细胞呼吸与发酵工程</p>
       </div>
     </div>
     <div class="tb-right">
       <div class="viewseg" id="viewSeg">
         <button data-v="factory" class="on">工厂全景</button>
-        <button data-v="process">流程跟随</button>
+        <button data-v="process">工段特写</button>
       </div>
+      <button class="tool-btn on" id="btnLabels" title="显示/隐藏设备标注">
+        <svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="18" cy="7" r="2"/></svg>
+        <span>标注</span>
+      </button>
+      <button class="tool-btn" id="btnImmersive" title="收起右侧栏，放大三维画面">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5"/></svg>
+        <span>沉浸</span>
+      </button>
       <button class="icon-btn" id="btnHelp" title="使用说明">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.8.7-.8 1.3v.4"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/></svg>
       </button>
@@ -67,18 +69,37 @@
     </button>
   </nav>
 
-  <div id="heroTitle">
-    <div class="ht-no" id="htNo">01</div>
-    <div class="ht-main">
-      <h2 id="htName">原料 · 发芽</h2>
-      <p id="htLead">让种子自己造出分解淀粉的工具。</p>
+  <main id="stage">
+    <div id="stageTop">
+      <div class="st-no" id="stNo">01</div>
+      <div class="st-txt">
+        <h2 id="stName">发芽</h2>
+        <p id="stLead">让种子自己造出分解淀粉的工具。</p>
+      </div>
+      <div class="st-chip" id="stChip">酶的产生</div>
     </div>
-  </div>
 
-  <div id="hud">
-    <div class="hud-cap">产线实时参数</div>
-    <div class="hud-row" id="hudRow"></div>
+    <div id="stageCanvas">
+      <canvas id="gl"></canvas>
+      <div id="labels"></div>
+      <div class="stage-hint">拖动旋转 · 滚轮缩放 · 双击复位</div>
+      <div id="cellCard" hidden>
+    <div class="cc-head">
+      <span class="cc-dot"></span>
+      <b>发酵罐内的分子事件</b>
+      <button id="ccClose">收起</button>
+    </div>
+    <div class="cc-eq" id="ccEq"></div>
+    <div class="cc-note" id="ccNote"></div>
   </div>
+    </div>
+
+    <div id="hudBar">
+      <span class="hud-cap">产线参数</span>
+      <div class="hud-row" id="hudRow"></div>
+      <span class="hud-note" id="hudNote">当前工段读数</span>
+    </div>
+  </main>
 
   <aside id="panel">
     <div class="panel-inner" id="panelInner"></div>
@@ -99,8 +120,8 @@
     </div>
     <div class="tl-track" id="tlTrack"></div>
     <div class="tl-side">
-      <div class="tl-count"><b id="tlNow">01</b><span>/ 09</span></div>
-      <div class="tl-hint">← → 切换工段</div>
+      <div class="tl-count"><b id="tlNow">01</b><span>/ 10</span></div>
+      <div class="tl-hint">← → 切换</div>
     </div>
   </footer>
 
@@ -117,16 +138,6 @@
       </header>
       <div class="ov-body" id="ovBody"></div>
     </div>
-  </div>
-
-  <div id="cellCard" hidden>
-    <div class="cc-head">
-      <span class="cc-dot"></span>
-      <b>发酵罐内的分子事件</b>
-      <button id="ccClose">收起</button>
-    </div>
-    <div class="cc-eq" id="ccEq"></div>
-    <div class="cc-note" id="ccNote"></div>
   </div>
 
   <div id="loader">

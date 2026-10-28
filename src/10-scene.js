@@ -22,10 +22,10 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
 renderer.shadowMap.needsUpdate = true;
 let shadowTick = 0;
-renderer.setClearColor(0x04080a, 1);
+renderer.setClearColor(0xd9e5f0, 1);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x050b0d, 24, 58);
+scene.fog = new THREE.Fog(0xdde8f2, 58, 135);
 
 const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 220);
 
@@ -49,9 +49,9 @@ function buildEnvironment() {
         'varying vec3 vP;',
         'void main(){',
         '  float h = normalize(vP).y * 0.5 + 0.5;',
-        '  vec3 low = vec3(0.004, 0.008, 0.010);',
-        '  vec3 mid = vec3(0.016, 0.030, 0.034);',
-        '  vec3 top = vec3(0.007, 0.012, 0.015);',
+        '  vec3 low = vec3(0.05, 0.06, 0.075);',
+        '  vec3 mid = vec3(0.26, 0.29, 0.33);',
+        '  vec3 top = vec3(0.50, 0.53, 0.57);',
         '  vec3 c = mix(low, mid, smoothstep(0.0, 0.46, h));',
         '  c = mix(c, top, smoothstep(0.5, 1.0, h));',
         '  gl_FragColor = vec4(c, 1.0);',
@@ -71,10 +71,10 @@ function buildEnvironment() {
     m.rotation.set(rot[0], rot[1], rot[2]);
     env.add(m);
   }
-  softbox(13, 8, [0, 22, 4], [Math.PI / 2, 0, 0], [3.4, 3.5, 3.6]);        /* 顶部主光板：小面高亮 */
-  softbox(11, 7, [-20, 8, 6], [0, -Math.PI / 2.6, 0], [1.30, 2.90, 3.30]);  /* 左冷光 */
-  softbox(10, 6, [18, 7, -9], [0, Math.PI / 2.4, 0], [3.00, 1.70, 0.70]);   /* 右暖光 */
-  softbox(14, 4, [0, 5, -24], [0, 0, 0], [0.85, 1.00, 1.10]);               /* 背光条 */
+  softbox(15, 10, [0, 22, 4], [Math.PI / 2, 0, 0], [1.05, 1.07, 1.10]);        /* 顶部主光板：小面高亮 */
+  softbox(12, 8, [-20, 8, 6], [0, -Math.PI / 2.6, 0], [0.50, 0.62, 0.74]);  /* 左冷光 */
+  softbox(11, 7, [18, 7, -9], [0, Math.PI / 2.4, 0], [0.78, 0.64, 0.48]);   /* 右暖光 */
+  softbox(14, 5, [0, 6, -24], [0, 0, 0], [0.85, 0.90, 0.95]);               /* 背光条 */
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
@@ -89,10 +89,10 @@ buildEnvironment();
 /* ---------------------------------------------------------
    灯光
    --------------------------------------------------------- */
-const hemi = new THREE.HemisphereLight(0x8fc4d0, 0x060b0d, 0.34);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x93a5b6, 0.34);
 scene.add(hemi);
 
-const key = new THREE.DirectionalLight(0xfff0d8, 1.62);
+const key = new THREE.DirectionalLight(0xfffaf2, 1.85);
 key.position.set(9, 15, 10);
 key.castShadow = true;
 key.shadow.mapSize.set(QUALITY.perf ? 1024 : 2048, QUALITY.perf ? 1024 : 2048);
@@ -107,19 +107,19 @@ key.shadow.normalBias = 0.022;
 scene.add(key);
 scene.add(key.target);
 
-const rimCool = new THREE.DirectionalLight(0x5fc8de, 0.46);
+const rimCool = new THREE.DirectionalLight(0x9fc4e8, 0.42);
 rimCool.position.set(-12, 7, -11);
 scene.add(rimCool);
 
-const rimWarm = new THREE.DirectionalLight(0xff8c3a, 0.22);
+const rimWarm = new THREE.DirectionalLight(0xffd9b0, 0.30);
 rimWarm.position.set(13, 4, -8);
 scene.add(rimWarm);
 
-const bounce = new THREE.PointLight(0x2b6a72, 0.26, 26, 2);
+const bounce = new THREE.PointLight(0xdfe9f4, 0.30, 26, 2);
 bounce.position.set(0, 0.6, 3.5);
 scene.add(bounce);
 
-const frontFill = new THREE.DirectionalLight(0xbfe6ea, 0.62);
+const frontFill = new THREE.DirectionalLight(0xffffff, 0.55);
 frontFill.position.set(-4, 6, 14);
 scene.add(frontFill);
 
@@ -131,7 +131,7 @@ const FLOOR = { w: 22.4, d: 6.9 };
 function concreteTexture() {
   const W = 2048, H = 748;
   const { c, g } = make2D(W, H);
-  g.fillStyle = '#2c3b40';
+  g.fillStyle = '#5c6d7b';
   g.fillRect(0, 0, W, H);
 
   /* 斑驳：大量低对比径向渐变叠出水泥的脏感 */
@@ -141,7 +141,7 @@ function concreteTexture() {
     const a = 0.010 + Math.random() * 0.026;
     const light = Math.random() > 0.46;
     const rg = g.createRadialGradient(x, y, 0, x, y, r);
-    rg.addColorStop(0, light ? 'rgba(190,215,215,' + a + ')' : 'rgba(0,0,0,' + (a * 1.5) + ')');
+    rg.addColorStop(0, light ? 'rgba(255,255,255,' + a + ')' : 'rgba(58,78,96,' + (a * 1.6) + ')');
     rg.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = rg;
     g.fillRect(x - r, y - r, r * 2, r * 2);
@@ -151,13 +151,21 @@ function concreteTexture() {
   const step = 128;
   g.lineWidth = 1;
   for (let x = 0; x <= W; x += step) {
-    g.strokeStyle = x % (step * 4) === 0 ? 'rgba(165,225,225,0.20)' : 'rgba(165,225,225,0.085)';
+    g.strokeStyle = x % (step * 4) === 0 ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.18)';
     g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); g.stroke();
   }
   for (let y = 0; y <= H; y += step) {
-    g.strokeStyle = y % (step * 4) === 0 ? 'rgba(165,225,225,0.20)' : 'rgba(165,225,225,0.085)';
+    g.strokeStyle = y % (step * 4) === 0 ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.18)';
     g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(W, y + 0.5); g.stroke();
   }
+
+  /* 边缘压暗：整块地面在亮环境里容易"飘起来" */
+  const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.22, W / 2, H / 2, Math.max(W, H) * 0.62);
+  vg.addColorStop(0, 'rgba(38,56,74,0)');
+  vg.addColorStop(0.62, 'rgba(38,56,74,0.10)');
+  vg.addColorStop(1, 'rgba(30,46,62,0.30)');
+  g.fillStyle = vg;
+  g.fillRect(0, 0, W, H);
 
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
@@ -168,7 +176,7 @@ function concreteTexture() {
 (function buildStage() {
   /* 悬浮台座：先一块深色厚板，再盖一层地面 */
   const slabMat = new THREE.MeshStandardMaterial({
-    color: 0x0d1518, roughness: 0.60, metalness: 0.22, envMapIntensity: 0.30
+    color: 0x8d9dab, roughness: 0.76, metalness: 0.06, envMapIntensity: 0.26
   });
   slabMat.name = 'slab';
   const slab = new THREE.Mesh(new THREE.BoxGeometry(FLOOR.w + 0.7, 0.72, FLOOR.d + 0.7), slabMat);
@@ -185,7 +193,7 @@ function concreteTexture() {
 
   const floorTex = concreteTexture();
   const floorMat = new THREE.MeshStandardMaterial({
-    map: floorTex, color: 0xa6b4b8, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.05
+    map: floorTex, color: 0xffffff, roughness: 0.90, metalness: 0.02, envMapIntensity: 0.30
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR.w, FLOOR.d), floorMat);
   floorMat.name = 'floorMat';
@@ -198,7 +206,7 @@ function concreteTexture() {
   /* 台座金属包边：必须是四条边条。
      用整块薄板会盖住地面（只在掠射角露出一点点，极难排查）。 */
   const trimMat = new THREE.MeshStandardMaterial({
-    color: 0x7c8c8f, roughness: 0.34, metalness: 1.0, envMapIntensity: 0.55
+    color: 0xb9c6d2, roughness: 0.30, metalness: 1.0, envMapIntensity: 1.1
   });
   const TW = FLOOR.w + 0.74, TD = FLOOR.d + 0.74, TH = 0.055, TY = -0.02;
   const bx = new THREE.BoxGeometry(TW, TH, 0.10);
@@ -228,7 +236,7 @@ function floorGlow(x, z, r, color, strength) {
     new THREE.PlaneGeometry(r * 2, r * 2),
     new THREE.MeshBasicMaterial({
       map: glowTex, color: new THREE.Color(color),
-      transparent: true, opacity: strength, blending: THREE.AdditiveBlending,
+      transparent: true, opacity: Math.min(0.55, strength * 1.6), blending: THREE.NormalBlending,
       depthWrite: false, fog: false
     })
   );

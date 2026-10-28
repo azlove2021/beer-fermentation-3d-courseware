@@ -1,7 +1,7 @@
 const { chromium } = require('playwright-core');
 const fs = require('fs'), path = require('path');
 const EXE = 'C:/Users/azlove2112/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe';
-const DIR = "D:/AAA-Workbudy/brewery-courseware/concept";
+const DIR = "D:/AAA-Workbudy/brewery-courseware/screenshots";
 (async () => {
   const b = await chromium.launch({ executablePath: EXE });
   const p = await b.newPage();

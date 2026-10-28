@@ -1,0 +1,1 @@
+(function(){ goTo(3,{force:true}); flyTo(stationView(3), true); return 'ok'; })()

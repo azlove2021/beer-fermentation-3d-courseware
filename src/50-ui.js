@@ -78,7 +78,7 @@ function updateLabels() {
     _v.project(camera);
     const px = (_v.x * 0.5 + 0.5) * w;
     const py = (-_v.y * 0.5 + 0.5) * h;
-    const outside = _v.z >= 1 || px < -80 || px > w + 80 || py < 186 || py > h - 26;
+    const outside = _v.z >= 1 || px < -70 || px > w + 70 || py < 42 || py > h - 16;
 
     if (outside) {
       if (L.shown !== false) { L.el.style.display = 'none'; L.shown = false; }
@@ -211,15 +211,11 @@ function goTo(i, opts) {
   const tot = document.querySelector('.tl-count span');
   if (tot) tot.textContent = '/ ' + (STATIONS.length < 10 ? '0' : '') + STATIONS.length;
 
-  /* 标题切换动画 */
-  const ht = $('#heroTitle');
-  ht.classList.add('swap');
-  setTimeout(function () {
-    $('#htNo').textContent = STATIONS[i].no;
-    $('#htName').textContent = STATIONS[i].name;
-    $('#htLead').textContent = STATIONS[i].lead;
-    ht.classList.remove('swap');
-  }, 200);
+  /* 顶部信息带 */
+  $('#stNo').textContent = STATIONS[i].no;
+  $('#stName').textContent = STATIONS[i].name;
+  $('#stLead').textContent = STATIONS[i].lead;
+  $('#stChip').textContent = STATIONS[i].tag;
 
   renderPanel();
   updateHUD();
@@ -249,10 +245,8 @@ function setCellMode(on) {
     $('#ccEq').textContent = 'C₆H₁₂O₆ ——酶→ 2C₂H₅OH + 2CO₂ + 少量能量';
     $('#ccNote').innerHTML = '场所：<b style="color:#ffd79a">细胞质基质</b>。两个阶段都在细胞质基质中进行，第二阶段<b style="color:#ffd79a">不产生 ATP</b>。罐内上升的气泡就是 CO₂。';
     flyTo(VIEWS.cell);
-    $('#panel').classList.add('hide');
   } else {
     card.hidden = true;
-    $('#panel').classList.remove('hide');
     if (State.idx === 7) flyTo(stationView(7));
   }
   $('#btnCellMode').classList.toggle('on', on);
@@ -656,6 +650,31 @@ $('#btnPlay').addEventListener('click', function () { setPlaying(!State.playing)
 $('#btnCellMode').addEventListener('click', toggleCellMode);
 $('#ccClose').addEventListener('click', function () { setCellMode(false); });
 
+/* ---- 标注开关 / 沉浸模式（状态记住） ---- */
+const PREF = (function () {
+  try { return JSON.parse(localStorage.getItem('brewery.ui') || '{}'); } catch (e) { return {}; }
+})();
+function savePref() {
+  try { localStorage.setItem('brewery.ui', JSON.stringify(PREF)); } catch (e) { }
+}
+
+function applyLabels(on) {
+  PREF.labels = on;
+  $('#labels').classList.toggle('off', !on);
+  $('#btnLabels').classList.toggle('on', on);
+  savePref();
+}
+function applyImmersive(on) {
+  PREF.immersive = on;
+  $('#app').classList.toggle('immersive', on);
+  $('#btnImmersive').classList.toggle('on', on);
+  savePref();
+  setTimeout(function () { resize(); }, 60);
+  setTimeout(function () { resize(); }, 540);
+}
+$('#btnLabels').addEventListener('click', function () { applyLabels(!PREF.labels); });
+$('#btnImmersive').addEventListener('click', function () { applyImmersive(!PREF.immersive); });
+
 $('#viewSeg').addEventListener('click', function (e) {
   const b = e.target.closest('button');
   if (!b) return;
@@ -797,6 +816,9 @@ const STATS = (function () {
     document.body.appendChild(b);
     setTimeout(function () { b.classList.add('show'); }, 900);
   }
+
+  applyLabels(PREF.labels !== false);
+  applyImmersive(!!PREF.immersive);
 
   const fill = $('#ldFill');
   if (fill) fill.style.width = '35%';

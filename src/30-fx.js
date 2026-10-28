@@ -250,8 +250,8 @@ function updateDetails(dt, t) {
   if (RAKE_ARM) RAKE_ARM.rotation.y += dt * 0.35;
 
   /* 夹套与指示灯呼吸：共用材质，整体脉动即可 */
-  MAT.teal.emissiveIntensity = 0.50 + 0.14 * Math.sin(t * 2.6);
-  MAT.amberLamp.emissiveIntensity = 1.9 + 0.28 * Math.sin(t * 5.1);
+  MAT.teal.emissiveIntensity = 0.28 + 0.06 * Math.sin(t * 2.6);
+  MAT.amberLamp.emissiveIntensity = 0.85 + 0.12 * Math.sin(t * 5.1);
 
   for (let i = 0; i < FERMENTERS.length; i++) {
     const rec = FERMENTERS[i];

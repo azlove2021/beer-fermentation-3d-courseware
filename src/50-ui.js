@@ -45,7 +45,7 @@ const LABEL_Y = [5.35, 3.90, 2.85, 2.60, 3.75, 1.55, 2.20, 4.25, 1.62, 1.75];
     const b = document.createElement('button');
     b.className = 'tl-node' + (i === 0 ? ' on' : '');
     b.dataset.i = i;
-    b.innerHTML = '<span class="no">' + st.no + '</span><span class="dot"></span><span class="nm">' + st.name.replace(' · ', '·') + '</span>';
+    b.innerHTML = '<span class="no">' + st.no + '</span><span class="dot"></span><span class="nm">' + st.name.replace(/ · /g, '·') + '</span>';
     b.addEventListener('click', function () { goTo(i); });
     track.appendChild(b);
   });
@@ -60,7 +60,7 @@ const LABELS = [];
   STATIONS.forEach(function (st, i) {
     const el = document.createElement('button');
     el.className = 'lab';
-    el.innerHTML = '<i>' + st.no + '</i><span>' + st.name.replace(' · ', '·') + '</span>';
+    el.innerHTML = '<i>' + st.no + '</i><span>' + st.name.replace(/ · /g, '·') + '</span>';
     el.style.pointerEvents = 'auto';
     el.addEventListener('click', function () { goTo(i); });
     box.appendChild(el);
@@ -78,7 +78,8 @@ function updateLabels() {
     _v.project(camera);
     const px = (_v.x * 0.5 + 0.5) * w;
     const py = (-_v.y * 0.5 + 0.5) * h;
-    const outside = _v.z >= 1 || px < -70 || px > w + 70 || py < 42 || py > h - 16;
+    const far = overview ? false : (Math.abs(i - State.idx) > 2);
+    const outside = _v.z >= 1 || far || px < -70 || px > w + 70 || py < 30 || py > h + 10;
 
     if (outside) {
       if (L.shown !== false) { L.el.style.display = 'none'; L.shown = false; }
@@ -86,8 +87,9 @@ function updateLabels() {
     }
     if (L.shown !== true) { L.el.style.display = ''; L.shown = true; }
 
-    /* 只在整数像素变化时写样式；用 transform 而非 left/top，不触发重排 */
-    const rx = Math.round(px), ry = Math.round(py);
+    /* 贴边时夹到画布内，别把标签切一半 */
+    const rx = Math.round(clamp(px, 46, w - 46));
+    const ry = Math.round(clamp(py, 40, h - 18));
     if (rx !== L.lx || ry !== L.ly) {
       L.lx = rx; L.ly = ry;
       L.el.style.transform = 'translate3d(' + rx + 'px,' + ry + 'px,0) translate(-50%,-100%)';
@@ -161,6 +163,20 @@ function renderPanel() {
   html += '<div class="p-change">' + chHtml + '</div>';
   html += '<ul class="p-bullets">' + st.bullets.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul>';
   if (st.eq) html += '<div class="p-eq">' + st.eq + '</div>';
+
+  /* 工序参数表：直接取工艺层，文案与运行状态同源 */
+  const steps = PROCESS[State.idx] || [];
+  if (steps.length) {
+    html += '<div class="p-steps"><div class="ps-cap">工序与参数<span>' + steps.length + ' 道</span></div>';
+    steps.forEach(function (sp, k) {
+      html += '<div class="ps-row"><span class="k">' + (k + 1) + '</span>' +
+        '<div class="ps-b"><b>' + sp.n + '</b>' +
+        '<span class="t">' + sp.temp + ' · ' + sp.real + '</span>' +
+        '<i>' + sp.k + '</i></div>' +
+        '<em class="src">' + (sp.src || '') + '</em></div>';
+    });
+    html += '<div class="ps-src">参数依据：教材 S1/S2 · 《酿造酒工艺学》S4 · 工业工艺规程 S5</div></div>';
+  }
   html += '<div class="p-key"><span>要点</span>' + st.key + '</div>';
   if (st.note) html += '<div class="p-note"><span>注意</span> ' + st.note + '</div>';
   html += '<div class="p-book">' + BOOK_ICON + '<span>' + st.book + '</span></div>';
@@ -217,7 +233,7 @@ function goTo(i, opts) {
   $('#stNo').textContent = STATIONS[i].no;
   $('#stName').textContent = STATIONS[i].name;
   $('#stLead').textContent = STATIONS[i].lead;
-  $('#stChip').textContent = STATIONS[i].tag;
+  if (!RUN.on) $('#stChip').textContent = STATIONS[i].tag;
 
   renderPanel();
   updateHUD();
@@ -237,6 +253,7 @@ function setCellMode(on) {
   if (!hero) return;
   hero.front.visible = !on;
   if (hero.coneFront) hero.coneFront.visible = !on;
+  if (hero.frontParts) hero.frontParts.visible = !on;
   hero.liquid.visible = on;
   hero.coneLiq.visible = on;
   hero.jackets.forEach(function (j) { j.visible = !on; });
@@ -448,7 +465,10 @@ function initSim() {
   });
   readSim();
   paintSim();
-  window.addEventListener('resize', function () { if (!$('#overlay').hidden) paintSim(); });
+  if (!window.__simResize) {
+    window.__simResize = function () { if (!$('#overlay').hidden) paintSim(); };
+    window.addEventListener('resize', window.__simResize);
+  }
 }
 function readSim() {
   const g = function (id, d) { const e = $('#' + id); return e ? parseFloat(e.value) : d; };
@@ -626,7 +646,7 @@ function paintQuiz() {
 /* ---- 说明 ---- */
 function viewHelp() {
   return '<ul class="help-list">' +
-    '<li><span class="hk">1</span><div><b>点底部的播放键「开产」。</b>一批麦汁会从第 1 站走到第 10 站：' +
+    '<li><span class="hk">1</span><div><b>点底部的播放键。</b>一批麦汁会从第 1 站走到第 10 站：' +
     '当前设备的地面会亮起蓝环，罐内液位先涨后落，管道里有一颗琥珀色液滴流向下一站，' +
     '底部参数（温度/糖度/酒精度/pH）跟着变。再按一次暂停。</div></li>' +
     '<li><span class="hk">2</span><div><b>顶栏「透视」。</b>一键让所有罐壁变半透明，' +
@@ -640,7 +660,7 @@ function viewHelp() {
     '条件控制模拟、课堂检测。条件控制里拖动滑杆，能直观看到“温度过高酶变性失活”“有氧偏繁殖、无氧偏产酒”。</div></li>' +
     '<li><span class="hk">6</span><div><b>顶栏「标注」「沉浸」。</b>标注控制设备标签显示；' +
     '沉浸收起右侧知识栏、让三维画面变宽。两个开关的偏好会记住。</div></li>' +
-    '<li><span class="hk">7</span><div><b>键盘：</b>← → 切换工段，1–9 直达，空格开产/暂停，Esc 关闭弹层。</div></li>' +
+    '<li><span class="hk">7</span><div><b>键盘：</b>← → 切换工段，1–9 与 0 直达十站，空格开始/暂停，Esc 关闭弹层。</div></li>' +
     '<li><span class="hk">8</span><div><b>关于准确性：</b>文案与人教版（2019）必修1第5章、' +
     '选择性必修3第1章一致。能量数值中，2870 kJ / 1161 kJ 为教材数值；酒精发酵 225 kJ / 61 kJ ' +
     '为常用参考值，并已与乳酸发酵的 196.65 kJ 明确区分。</div></li>' +
@@ -729,6 +749,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'ArrowRight') { goTo(State.idx + 1); e.preventDefault(); }
   else if (e.key === 'ArrowLeft') { goTo(State.idx - 1); e.preventDefault(); }
   else if (e.key === ' ') { setPlaying(!State.playing); e.preventDefault(); }
+  else if (e.key === '0') { goTo(9); }
   else if (e.key >= '1' && e.key <= '9') { goTo(parseInt(e.key, 10) - 1); }
 });
 
@@ -831,6 +852,7 @@ const STATS = (function () {
       '请在浏览器设置中开启「使用硬件加速」，或改用 Chrome / Edge 打开。';
     document.body.appendChild(b);
     setTimeout(function () { b.classList.add('show'); }, 900);
+    setTimeout(function () { b.classList.remove('show'); }, 13000);
   }
 
   applyLabels(PREF.labels !== false);

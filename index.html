@@ -123,9 +123,12 @@ svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke
   box-shadow:var(--sh); overflow:hidden;
 }
 #stageTop{
+  position:relative;
   display:flex;align-items:center;gap:13px;padding:0 18px;
   border-bottom:1px solid var(--line);background:var(--surface);
 }
+#stProg{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent}
+#stProg i{display:block;height:100%;width:0;background:var(--blue);transition:width .12s linear}
 .st-no{
   font-family:var(--num);font-size:12px;font-weight:700;letter-spacing:.1em;
   color:var(--blue);padding:2px 8px;border-radius:6px;background:var(--blueL);
@@ -478,7 +481,7 @@ input[type=range]::-webkit-slider-thumb{
 
 /* ---------------- 分子卡片 ---------------- */
 #cellCard{
-  position:absolute;left:50%;bottom:60px;transform:translateX(-50%);z-index:40;width:min(560px,calc(100% - 40px));
+  position:absolute;left:22px;bottom:20px;z-index:40;width:min(430px,calc(100% - 44px));
   padding:13px 16px 14px;border-radius:12px;
   background:rgba(255,255,255,.97);border:1px solid #d3e2fb;
   box-shadow:0 16px 40px rgba(16,40,66,.18);
@@ -519,8 +522,8 @@ input[type=range]::-webkit-slider-thumb{
 
 /* 软件渲染提示 */
 #softWarn{
-  position:fixed;left:50%;top:12px;transform:translate(-50%,-10px);z-index:55;
-  max-width:min(700px,calc(100vw - 48px));
+  position:fixed;left:50%;top:76px;transform:translate(-50%,-10px);z-index:55;
+  max-width:min(620px,calc(100vw - 48px));
   padding:10px 17px;border-radius:10px;
   background:#fff;border:1px solid #f0b7b3;border-left:4px solid var(--red);
   color:#9c2b2b;font-size:12px;line-height:1.6;
@@ -559,6 +562,28 @@ input[type=range]::-webkit-slider-thumb{
   .tool-btn{padding:0;width:30px;justify-content:center}
   .ov-sheet{width:calc(100vw - 20px);max-height:92vh}
 }
+
+/* 工序参数表 */
+.p-steps{margin-top:13px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.ps-cap{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--line);
+  font-size:10px;letter-spacing:.12em;color:var(--ink3);font-weight:600;
+}
+.ps-cap span{font-family:var(--num);letter-spacing:0;color:var(--blue)}
+.ps-row{display:flex;gap:9px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.ps-row:last-child{border-bottom:none}
+.ps-row .k{
+  flex:0 0 18px;height:18px;border-radius:5px;display:grid;place-items:center;
+  background:var(--blueL);color:var(--blue);font-family:var(--num);font-size:9.5px;font-weight:700;
+  margin-top:1px;
+}
+.ps-b{flex:1;min-width:0}
+.ps-b b{display:inline;font-size:12px;color:var(--ink);font-weight:650}
+.ps-b .t{font-family:var(--num);font-size:10.5px;color:var(--blue);margin-left:6px}
+.ps-b i{display:block;font-style:normal;font-size:10.5px;line-height:1.55;color:var(--ink3);margin-top:2px}
+.ps-row .src{flex:0 0 auto;font-style:normal;font-family:var(--num);font-size:9px;color:var(--ink3);opacity:.8;margin-top:2px}
+.ps-src{padding:7px 12px;font-size:9.5px;color:var(--ink3);background:var(--surface2);border-top:1px solid var(--line)}
 
 </style>
 </head>
@@ -635,6 +660,7 @@ input[type=range]::-webkit-slider-thumb{
         <p id="stLead">让种子自己造出分解淀粉的工具。</p>
       </div>
       <div class="st-chip" id="stChip">酶的产生</div>
+      <div id="stProg"><i></i></div>
     </div>
 
     <div id="stageCanvas">
@@ -729,7 +755,7 @@ input[type=range]::-webkit-slider-thumb{
    ========================================================= */
 'use strict';
 
-/* ---- 九个工段 ---- */
+/* ---- 十个工段 ---- */
 const STATIONS = [
   {
     id: 'malt', no: '01', name: '发芽', en: 'MALTING',
@@ -773,28 +799,30 @@ const STATIONS = [
   },
   {
     id: 'mash', no: '04', name: '糖化 · 过滤', en: 'MASHING',
-    x: -3.30, temp: '62–72 ℃', change: '淀粉 → 糖浆',
+    x: -3.30, temp: '40–78 ℃ 分段', change: '淀粉 → 糖浆',
     tag: '酶的专一性',
     lead: '淀粉酶把长链淀粉剪成可发酵的糖。',
     bullets: [
       '麦芽粉与水混合，淀粉酶把淀粉水解，<b>形成糖浆</b>（麦芽糖、葡萄糖等可发酵糖）。',
       '酶具有<b>专一性</b>：淀粉酶只催化淀粉水解，蛋白质由蛋白酶另行分解。',
-      '温度决定酶活性：约 60–65 ℃ 利于 β-淀粉酶，70–75 ℃ 利于 α-淀粉酶；<b>超过 80 ℃ 酶变性失活</b>。',
-      '糖化后过滤，把含糖的麦汁与不溶性麦糟分开。'
+      '实际生产分四段升温：<b>50–52 ℃ 蛋白休止 → 62–65 ℃ β-淀粉酶 → 68–72 ℃ α-淀粉酶 → 76–78 ℃ 灭酶</b>。',
+      '糖化终点用<b>碘试</b>判定：碘液由蓝黑转浅红，说明淀粉已转化完全；仍发蓝必须补酶返工。',
+      '随后过滤并洗糟（洗糟水 76–78 ℃），洗到残糖 1.5–2.0 °P 为止，避免溶出过多麦皮多酚。'
     ],
     book: '必修1 第5章第1节 酶的专一性与温度对酶活性的影响',
     key: '淀粉 →(淀粉酶)→ 糖浆，这是啤酒中酒精的来源。',
-    eq: '(C₆H₁₀O₅)ₙ + nH₂O  —淀粉酶→  nC₁₂H₂₂O₁₁'
+    eq: '2(C₆H₁₀O₅)ₙ + nH₂O  —淀粉酶→  nC₁₂H₂₂O₁₁'
   },
   {
     id: 'boil', no: '05', name: '蒸煮 · 加酒花', en: 'BOILING',
-    x: -0.45, temp: '100 ℃', change: '风味 · 终止酶 · 灭菌',
+    x: -0.45, temp: '100 ℃ · ≥60 min', change: '风味 · 终止酶 · 灭菌',
     tag: '教材三件事',
     lead: '一次沸腾，同时完成三个任务。',
     bullets: [
       '教材概括为三件事：产生<b>风味组分</b>；<b>终止酶的进一步作用</b>；对糖浆<b>灭菌</b>。',
       '加入啤酒花，赋予苦味与香气；高温使残留的淀粉酶变性失活，糖化到此为止。',
-      '这是<b>灭菌</b>而不是消毒：杀死包括芽孢在内的所有微生物，保证后续单一菌种发酵。'
+      '教材把这一步概括为对糖浆<b>灭菌</b>：煮沸能杀灭麦汁中的营养细胞与绝大多数杂菌，为单一菌种发酵创造条件。',
+      '严格意义的灭菌（含芽孢）需 121 ℃ 高压蒸汽，常压煮沸达不到；生产上靠煮沸、设备灭菌与纯种接种共同控制污染。'
     ],
     book: '选择性必修3 第1章第3节；必修1 酶的高温变性',
     key: '消毒只杀死部分微生物，灭菌要杀死全部微生物及芽孢。',
@@ -802,12 +830,12 @@ const STATIONS = [
   },
   {
     id: 'chill', no: '06', name: '冷却', en: 'CHILLING',
-    x: 1.35, temp: '100 → 10 ℃', change: '澄清 · 降温',
+    x: 1.35, temp: '100 → 10–16 ℃', change: '澄清 · 降温',
     tag: '温度窗口',
     lead: '降到酵母舒服的温度，才敢接种。',
     bullets: [
       '回旋沉淀槽利用离心作用，把热凝固物（蛋白质—多酚复合物）沉到槽底中央。',
-      '板式换热器在几十秒内把麦汁降到接种温度，为酵母菌提供适宜环境。',
+      '板式换热器让麦汁在板片间单程只停留数十秒，整罐麦汁在 60–90 min 内降到接种温度——既快速穿过易染菌温度带，又不长时间损伤麦汁。',
       '接种前必须降温：温度过高会使<b>酵母菌体内的酶变性失活</b>。',
       '快速冷却同时缩短麦汁停留在“易染菌温度带”的时间。'
     ],
@@ -816,7 +844,7 @@ const STATIONS = [
   },
   {
     id: 'pitch', no: '07', name: '接种', en: 'PITCHING',
-    x: 2.55, temp: '10–15 ℃', change: '接入酵母菌',
+    x: 2.55, temp: '10–16 ℃', change: '接入酵母菌',
     tag: '单一菌种',
     lead: '把主角请进场。',
     bullets: [
@@ -829,23 +857,26 @@ const STATIONS = [
   },
   {
     id: 'ferment', no: '08', name: '主发酵', en: 'PRIMARY FERMENTATION',
-    x: 4.70, temp: '8–15 ℃', change: '糖 → 酒精 + CO₂',
+    x: 4.70, temp: '8–12 ℃（拉格）', change: '糖 → 酒精 + CO₂',
     tag: '核心 · 无氧呼吸',
     lead: '先让它呼吸，再让它发酵。',
     bullets: [
       '酵母菌的<b>繁殖</b>、<b>大部分糖的分解</b>和<b>代谢物的生成</b>，都在主发酵阶段完成。',
       '<b>先通气</b>：酵母菌进行有氧呼吸，释放大量能量，快速繁殖、扩大菌体数量。',
       '<b>后密封</b>：氧气耗尽后转为无氧呼吸（酒精发酵），在<b>细胞质基质</b>中把葡萄糖分解为酒精和 CO₂。',
+      '糖度降到 3.8–4.2 °P 时<b>封罐升压</b>至 0.10–0.15 MPa，让 CO₂ 溶入酒体。',
+      '主发酵结束还要<b>升温至 12 ℃ 做双乙酰还原</b>，把双乙酰降到 ≤0.1 mg/L，否则酒会有明显黄油味。',
+      '还原达标后 24 h 内降温到 5 ℃ 回收酵母——排晚了酵母自溶会给酒带来苦味。',
       '教材指出：啤酒生产中使用基因工程改造的啤酒酵母，可加速发酵、缩短生产周期。'
     ],
     book: '必修1 第5章第3节 细胞呼吸；选择性必修3 第1章第3节',
     key: 'C₆H₁₂O₆ → 2C₂H₅OH + 2CO₂ + 少量能量（细胞质基质）',
     eq: 'C₆H₁₂O₆  —酶→  2C₂H₅OH + 2CO₂ + 少量能量',
-    note: '教材讨论题：为什么“先通气后密封”？通气是为了让酵母菌有氧呼吸大量繁殖；密封是为了让酵母菌进行酒精发酵产生酒精。'
+    note: '教材果酒制作的适宜温度是 18–25 ℃，而啤酒工业主发酵多为 8–12 ℃。后者是抑制杂菌、减少高级醇的<b>工艺选择</b>，不是酶的最适温度：温度低、发酵慢，但酒体更干净。'
   },
   {
     id: 'mature', no: '09', name: '后发酵', en: 'MATURATION',
-    x: 7.10, temp: '0–4 ℃', change: '澄清 · 成熟',
+    x: 7.10, temp: '−1～−1.5 ℃', change: '澄清 · 成熟',
     tag: '低温密闭',
     lead: '让时间把尖锐的味道磨平。',
     bullets: [
@@ -864,6 +895,7 @@ const STATIONS = [
     lead: '把代谢产物，变成一瓶商品。',
     bullets: [
       '过滤除去残余酵母与浑浊物，再调节、分装。',
+      '注意顺序：教材八步把“消毒”排在分装之前，对应<b>瞬时杀菌 + 无菌灌装</b>；另一条常见路线是灌装后隧道式巴氏杀菌。两条路线工业上都在用，目的相同。',
       '<b>消毒</b>（巴氏消毒）杀死啤酒中的<b>大多数</b>微生物，延长保存期——注意这里教材用的是“消毒”，不是“灭菌”。',
       '若产品是<b>微生物细胞本身</b>，用过滤、沉淀分离；若产品是<b>代谢物</b>（酒精、CO₂），则按性质分离提纯。',
       '教材讨论：若密封不严，酒精会被<b>醋酸菌</b>氧化成乙醛，最终变成醋酸，啤酒就变酸了。'
@@ -921,11 +953,10 @@ const COMPARE = [
 const ENGINEERING = [
   { k: '01', t: '选育菌种', d: '从自然界筛选，或用诱变育种、基因工程育种获得性状优良的菌种。啤酒生产中使用基因工程改造的啤酒酵母，可加速发酵、缩短生产周期。' },
   { k: '02', t: '扩大培养', d: '工业发酵罐体积可达几十到几百立方米，接入的菌种需几立方米。先用液体培养基在较短时间内得到大量菌体。' },
-  { k: '03', t: '培养基的配制', d: '根据菌种需要选择原料制备培养基，配方要经过反复试验才能确定。' },
-  { k: '04', t: '灭菌', d: '发酵工程所用菌种大多是单一菌种，一旦杂菌污染，产量会大大下降。培养基和发酵设备都必须严格灭菌。' },
-  { k: '05', t: '接种', d: '把扩大培养的菌种接入灭菌后的培养基／发酵罐。' },
-  { k: '06', t: '发酵', d: '发酵工程的中心环节。随时检测微生物数量与产物浓度，严格控制温度、pH、溶解氧等条件。' },
-  { k: '07', t: '分离、提纯', d: '产品是菌体：过滤、沉淀后分离干燥；产品是代谢物：按产物性质提取、分离、纯化。' }
+  { k: '03', t: '培养基的配制、灭菌', d: '根据菌种需要选择原料制备培养基，配方经反复试验确定。发酵工程所用菌种大多是单一菌种，一旦杂菌污染产量会大幅下降，因此培养基和发酵设备都必须严格灭菌。' },
+  { k: '04', t: '接种', d: '把扩大培养的菌种接入灭菌后的培养基／发酵罐。' },
+  { k: '05', t: '发酵', d: '发酵工程的中心环节。随时检测微生物数量与产物浓度，严格控制温度、pH、溶解氧等条件。' },
+  { k: '06', t: '分离、提纯', d: '产品是菌体：过滤、沉淀后分离干燥；产品是代谢物：按产物性质提取、分离、纯化。' }
 ];
 
 /* ---- 检测实验 ---- */
@@ -1013,6 +1044,105 @@ const DISCUSSION = [
     a: '酒精在<b>醋酸菌</b>的作用下被氧化产生乙醛，最后变为<b>醋酸</b>，啤酒就变酸了。'
   }
 ];
+
+/* ---- 05-process.js ---- */
+/* =========================================================
+   05 · 工艺层
+   十台设备不变，每台内部展开真实工序。
+   每道工序带 src（来源编号），面板逐行显示，可回溯。
+   demo 时长是"信息密度加权"的演示时间，与真实时长不成比例。
+   ========================================================= */
+'use strict';
+
+/* ---- 参 数 来 源 ---- */
+const SOURCES = [
+  { id: 'S1', t: '人教版《生物学·选择性必修3 生物技术与工程》第1章', d: '啤酒工业化生产流程八步、发酵工程基本环节' },
+  { id: 'S2', t: '人教版《生物学·必修1 分子与细胞》第5章', d: '酶的特性、温度与 pH 对酶活性的影响、细胞呼吸' },
+  { id: 'S3', t: 'GB 4927—2008《啤酒》', d: '成品理化指标；优级啤酒双乙酰 ≤0.10 mg/L' },
+  { id: 'S4', t: '《酿造酒工艺学》（发酵工程专业教材）', d: '糖化分段休止、麦汁制备、发酵与贮酒工艺参数' },
+  { id: 'S5', t: '工业啤酒厂糖化—发酵工艺规程（公开技术资料，2024–2026）', d: '料水比、洗糟水温、接种量、封罐糖度、罐压、杀菌强度' }
+];
+
+/* ---- 工序表 ----
+   temp 工艺温度；real 真实时长；d 演示时长（秒，按信息密度加权）
+   src  来源编号；k 该工序的关键判断 / 观察点                        */
+const PROCESS = [
+  /* 01 发芽 */
+  [
+    { n: '浸麦', temp: '12–16 ℃', real: '40–48 h', d: 1.8, src: 'S4', k: '大麦吸水至含水 42–45%，胚乳软化' },
+    { n: '发芽', temp: '15–20 ℃', real: '4–6 d', d: 3.0, src: 'S4', k: '胚乳中生成并释放 α-、β-淀粉酶与蛋白酶' }
+  ],
+  /* 02 焙烤 */
+  [
+    { n: '干燥', temp: '50–60 ℃', real: '12–20 h', d: 1.6, src: 'S4', k: '把水分降到 5% 以下，便于贮存' },
+    { n: '焙烤', temp: '80–85 ℃（浅麦芽）', real: '2–4 h', d: 2.8, src: 'S1', k: '杀死种子胚、停止发芽，但不使淀粉酶失活；深色麦芽需 100–105 ℃，酶活性大幅下降，只用于调色' },
+    { n: '除根', temp: '常温', real: '—', d: 1.2, src: 'S4', k: '干燥后根芽脆化才脱得净；根芽带苦味且易吸湿，必须除去' }
+  ],
+  /* 03 碾磨 */
+  [
+    { n: '辊式粉碎', temp: '常温', real: '—', d: 2.2, src: 'S4', k: '增大接触面积；碎而不烂，避免过滤困难' }
+  ],
+  /* 04 糖化·过滤 —— 全流程最核心的一段 */
+  [
+    { n: '投料', temp: '40–45 ℃', real: '20 min', d: 1.4, src: 'S5', k: '料水比 3.2∶1，边投边搅，防止结块' },
+    { n: '蛋白休止', temp: '50–52 ℃', real: '30–40 min', d: 2.2, src: 'S4', k: '内切肽酶分解高分子蛋白，生成酵母可用的氨基酸' },
+    { n: 'β-淀粉酶休止', temp: '62–65 ℃', real: '60–70 min', d: 3.4, src: 'S4', k: 'β-淀粉酶活性最高，大量生成麦芽糖——决定可发酵糖' },
+    { n: 'α-淀粉酶休止', temp: '68–72 ℃', real: '30–40 min', d: 2.4, src: 'S4', k: 'α-淀粉酶分解支链淀粉，生成糊精，保留酒体厚度' },
+    { n: '碘试', temp: '取样冷却至室温', real: '1 min', d: 1.6, src: 'S5', k: '休止末取样、冷却后滴碘：蓝黑转浅红／淡黄＝转化完全；仍发蓝则延长休止或补酶，合格后才升温灭酶' },
+    { n: '糖化终了', temp: '76–78 ℃', real: '10 min', d: 1.4, src: 'S4', k: '高温使酶失活、终止酶解，同时降低醪液黏度，便于过滤' },
+    { n: '过滤 · 洗糟', temp: '76–78 ℃', real: '60–90 min', d: 3.0, src: 'S5', k: '头道麦汁浊度 ≤10 EBC；洗糟至残糖 1.5–2.0 °P 为止' }
+  ],
+  /* 05 蒸煮·加酒花 */
+  [
+    { n: '升温至沸', temp: '100 ℃', real: '20 min', d: 1.6, src: 'S4', k: '终止酶反应，开始杀灭麦汁中的营养细胞' },
+    { n: '分次加酒花', temp: '100 ℃', real: '60–90 min', d: 2.8, src: 'S4', k: '初沸加苦型酒花、终了前加香型，α-酸异构化产生苦味' },
+    { n: '煮沸完成', temp: '100 ℃', real: '≥60 min', d: 1.6, src: 'S5', k: '煮沸强度 8–12%/h；结束时 pH 5.2–5.4，DMS 被蒸出' }
+  ],
+  /* 06 冷却 */
+  [
+    { n: '回旋沉淀', temp: '95 ℃', real: '20–30 min', d: 2.2, src: 'S5', k: '离心沉降热凝固物与酒花残渣，避免堵塞换热器' },
+    { n: '板换冷却', temp: '100 → 10 ℃', real: '≤90 min', d: 2.4, src: 'S5', k: '板片间单程只停留数十秒，整罐 60–90 min 降到位，快速穿过易染菌温度带' },
+    { n: '麦汁充氧', temp: '10–16 ℃', real: '—', d: 1.5, src: 'S5', k: '溶氧 8–10 mg/L，供酵母有氧繁殖' }
+  ],
+  /* 07 接种 */
+  [
+    { n: '酵母扩培', temp: '10–20 ℃', real: '3–5 d', d: 2.0, src: 'S4', k: '三级扩培：试管 → 三角瓶 → 卡氏罐 → 大罐' },
+    { n: '接种', temp: '10–16 ℃', real: '≤24 h 满罐', d: 2.0, src: 'S5', k: '拉格 1.2–1.8×10⁷ cells/mL（即 1.0–1.5×10⁶ cells/(mL·°P)）；活性 ≥90%' }
+  ],
+  /* 08 主发酵 */
+  [
+    { n: '起发', temp: '8–12 ℃', real: '12–24 h', d: 1.6, src: 'S4', k: '酵母利用溶氧有氧繁殖，出现明显起泡' },
+    { n: '主发酵', temp: '8–12 ℃', real: '5–10 d', d: 3.2, src: 'S1', k: '降糖 0.8–1.2 °P/天；酵母菌无氧呼吸产酒精与 CO₂' },
+    { n: '封罐', temp: '10 ℃', real: '糖度 3.8–4.2 °P 时', d: 1.6, src: 'S5', k: '封罐升压至 0.10–0.15 MPa，CO₂ 溶入酒体' },
+    { n: '双乙酰还原', temp: '12 ℃', real: '24–48 h', d: 2.4, src: 'S3', k: '酵母把双乙酰还原为无味的 2,3-丁二醇，降至 ≤0.10 mg/L（GB 4927 优级）' },
+    { n: '降温回收酵母', temp: '12 → 5 ℃', real: '24 h', d: 1.6, src: 'S5', k: '及时排酵母，防止自溶带来苦味' }
+  ],
+  /* 09 后发酵 */
+  [
+    { n: '降温', temp: '5 → −1 ℃', real: '24 h', d: 1.8, src: 'S5', k: '缓慢降温，避免酵母休克' },
+    { n: '贮酒成熟', temp: '−1～−1.5 ℃', real: '7–30 d', d: 3.0, src: 'S4', k: '残糖缓慢发酵、CO₂ 饱和、蛋白与多酚沉降澄清' }
+  ],
+  /* 10 过滤·消毒·灌装 —— 按教材"消毒在前、分装在後"的顺序 */
+  [
+    { n: '过滤', temp: '0–4 ℃', real: '—', d: 1.8, src: 'S4', k: '硅藻土或膜过滤除去酵母与浑浊物' },
+    { n: '瞬时杀菌', temp: '72 ℃ / 30 s', real: '30 s', d: 1.8, src: 'S5', k: '教材"消毒→分装"对应瞬时杀菌后无菌灌装；另一条路线是灌装后隧道式巴氏杀菌（60–65 ℃ / 20–30 min，约 15–25 PU）' },
+    { n: '灌装', temp: '0–4 ℃', real: '—', d: 1.8, src: 'S5', k: '等压灌装、控制增氧；消毒是杀死大多数微生物，不是灭菌' }
+  ]
+];
+
+/* 单站演示总时长 */
+function stationDemo(i) {
+  let s = 0;
+  const arr = PROCESS[i] || [];
+  for (let k = 0; k < arr.length; k++) s += arr[k].d;
+  return s || 3;
+}
+
+/* 来源查询 */
+function srcOf(id) {
+  for (let i = 0; i < SOURCES.length; i++) if (SOURCES[i].id === id) return SOURCES[i];
+  return null;
+}
 
 /* ---- 01-util.js ---- */
 /* =========================================================
@@ -1430,9 +1560,10 @@ glCanvas.addEventListener('wheel', e => {
    尺寸
    --------------------------------------------------------- */
 function resize() {
-  const stage = document.getElementById('stage');
-  const w = Math.max(2, stage.clientWidth);
-  const h = Math.max(2, stage.clientHeight);
+  /* 必须取画布自己的容器：#stage 还包含信息带与参数条，用它会把画面纵向压扁 */
+  const host = document.getElementById('stageCanvas') || document.getElementById('stage');
+  const w = Math.max(2, host.clientWidth);
+  const h = Math.max(2, host.clientHeight);
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   /* 竖屏 / 窄窗口时拉大视角，保证设备完整进画 */
@@ -1453,7 +1584,7 @@ window.addEventListener('resize', resize);
 'use strict';
 
 const LOOK = {
-  exposure: 0.86,
+  exposure: 0.80,
   bloomOn: true,
   bloomThreshold: 1.30,
   bloomKnee: 0.52,
@@ -2185,7 +2316,7 @@ function gauge(x, y, z, s, faceZ) {
 })();
 
 /* =========================================================
-   03 · 糖化锅（铜）
+   04 · 糖化锅（铜）
    ========================================================= */
 (function mashTun() {
   const g = new THREE.Group();
@@ -2246,7 +2377,7 @@ function gauge(x, y, z, s, faceZ) {
 let RAKE_ARM = null;
 
 /* =========================================================
-   04 · 过滤槽
+   05 · 过滤槽
    ========================================================= */
 (function lauter() {
   const g = new THREE.Group();
@@ -2302,7 +2433,7 @@ let RAKE_ARM = null;
 })();
 
 /* =========================================================
-   05 · 煮沸锅
+   06 · 煮沸锅
    ========================================================= */
 (function kettle() {
   const g = new THREE.Group();
@@ -2361,7 +2492,7 @@ let RAKE_ARM = null;
 })();
 
 /* =========================================================
-   06 · 回旋沉淀槽 + 板式换热器
+   07 · 回旋沉淀槽 + 板式换热器
    ========================================================= */
 (function whirlpool() {
   const g = new THREE.Group();
@@ -2467,14 +2598,15 @@ function buildFermenter(x, z, scale, hero) {
   /* 支腿 + 裙座 */
   legs(g, R, 1.02, 4, 0, R * 0.86);
 
-  /* 侧视镜 */
-  sightGlass(0, 1.62, R * 0.995, 0.13, g, false);
-
-  /* 取样阀 */
+  /* 侧视镜与取样阀挂在"前半壳"上：剖切时一起收掉，
+     否则会留下悬空的金属环和小圆点浮在液面上 */
+  const frontParts = new THREE.Group();
+  g.add(frontParts);
+  sightGlass(0, 1.40, R * 0.995, 0.13, frontParts, false);
   const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.12, 10), MAT.brass);
   valve.rotation.x = Math.PI / 2;
   valve.position.set(0, 0.95, R * 0.95);
-  g.add(valve);
+  frontParts.add(valve);
 
   /* 内部：液体 / 气泡 / 酵母 */
   const liquidH = 1.62;
@@ -2484,16 +2616,16 @@ function buildFermenter(x, z, scale, hero) {
   );
   liquid.position.y = 1.02 + liquidH / 2;
   liquid.visible = false;
-  liquid.renderOrder = 1;
+  liquid.renderOrder = -1;
   g.add(liquid);
-  VESSELS.push({ mesh: liquid, baseY: 1.02, full: liquidH, station: hero ? 7 : 7, hero: true });
+  VESSELS.push({ mesh: liquid, baseY: 1.02, full: liquidH, station: 7, hero: !!hero });
 
   /* 锥底积液 */
   const coneLiq = new THREE.Mesh(latheGeo([
     [0.06, 0.10], [0.30, 0.32], [R * 0.62, 0.68], [R * 0.93, 0.99], [R * 0.93, 1.02]
   ], 40), MAT.beer);
   coneLiq.visible = false;
-  coneLiq.renderOrder = 1;
+  coneLiq.renderOrder = -1;
   g.add(coneLiq);
 
   /* 只有会被剖开的教学罐才需要内部光源；其余罐体的光完全被罐壁挡住 */
@@ -2506,7 +2638,7 @@ function buildFermenter(x, z, scale, hero) {
 
   const rec = {
     group: g, x: x, z: z, scale: s, R: R,
-    front: front, back: back, coneFront: coneFront, coneBack: coneBack,
+    front: front, back: back, coneFront: coneFront, coneBack: coneBack, frontParts: frontParts,
     liquid: liquid, coneLiq: coneLiq,
     jackets: jackets, light: innerLight, hero: !!hero,
     liquidH: liquidH, cut: false
@@ -2517,8 +2649,8 @@ function buildFermenter(x, z, scale, hero) {
 }
 
 /* 三只主发酵罐 + 一只酵母扩培罐 */
-buildFermenter(3.60, -0.55, 1.00, true);
-buildFermenter(4.70, -0.55, 1.00, false);
+buildFermenter(3.60, -0.55, 1.00, false);
+buildFermenter(4.70, -0.55, 1.00, true);
 buildFermenter(5.80, -0.55, 1.00, false);
 buildFermenter(2.55, 1.42, 0.46, false);
 
@@ -2778,8 +2910,8 @@ key.shadow.camera.updateProjectionMatrix();
    前场道具：填掉台座左前方的空地，同时交代物料
    ========================================================= */
 (function props() {
-  const burlap = new THREE.MeshStandardMaterial({ color: 0xb9a276, roughness: 0.88, metalness: 0.0 });
-  const burlapD = new THREE.MeshStandardMaterial({ color: 0x8e7a55, roughness: 0.9, metalness: 0.0 });
+  const burlap = new THREE.MeshStandardMaterial({ color: 0x9c8862, roughness: 0.96, metalness: 0.0 });
+  const burlapD = new THREE.MeshStandardMaterial({ color: 0x7a6847, roughness: 0.97, metalness: 0.0 });
 
   /* 麻袋：压扁的球，堆成金字塔 */
   const sackGeo = new THREE.SphereGeometry(0.30, 14, 10);
@@ -3215,22 +3347,21 @@ function updateDetails(dt, t) {
 
 /* ---- 35-run.js ---- */
 /* =========================================================
-   35 · 产线联动
-   一条"批次"沿十个工段推进：进料 → 反应 → 输送到下一站。
-   液位、地环、传输液滴、HUD 读数都由同一个状态机驱动。
+   35 · 产线联动（按工序推进）
+   一站之内按 PROCESS 的子工序走：液位、地环、液滴、工序条同步。
+   演示时长按站内相对比例压缩，不是真实工艺时间。
    ========================================================= */
 'use strict';
 
 const RUN = {
   on: false,
   idx: -1,
-  phase: 'idle',      /* idle | fill | process | transfer | done */
+  step: 0,
   t: 0,
   speed: 1,
-  follow: true
+  follow: true,
+  done: false
 };
-
-const PHASE_DUR = { fill: 0.9, process: 2.6, transfer: 1.1 };
 
 /* ---- 工段地环 ---- */
 const RING = new THREE.Mesh(
@@ -3249,7 +3380,7 @@ scene.add(RING);
 const SLUG = new THREE.Mesh(
   new THREE.SphereGeometry(0.085, 16, 12),
   new THREE.MeshStandardMaterial({
-    color: 0xf0a02a, emissive: 0xc4760a, emissiveIntensity: 0.45,
+    color: 0xf0a02a, emissive: 0xc4760a, emissiveIntensity: 0.35,
     roughness: 0.35, metalness: 0.0
   })
 );
@@ -3267,73 +3398,102 @@ function setXray(on) {
     m.depthWrite = !on;
     m.needsUpdate = true;
   });
-  /* 不运行时也把液位摆出来，方便讲解 */
   if (!RUN.on) {
     for (let i = 0; i < VESSELS.length; i++) {
-      if (VESSELS[i].hero && State.cellMode) continue;
+      if (VESSELS[i].hero && typeof State !== 'undefined' && State.cellMode) continue;
       setVesselLevel(VESSELS[i], on ? 0.58 : 0);
     }
   }
 }
 
-/* ---- 每个工段的容器 ---- */
 function vesselsOf(i) {
   const out = [];
   for (let k = 0; k < VESSELS.length; k++) if (VESSELS[k].station === i) out.push(VESSELS[k]);
   return out;
 }
-
 function clearAllLevels() {
   for (let k = 0; k < VESSELS.length; k++) setVesselLevel(VESSELS[k], 0);
 }
 
-/* ---- 状态切换 ---- */
-function runGoto(i, phase) {
-  RUN.idx = i;
-  RUN.phase = phase || 'fill';
-  RUN.t = 0;
+/* ---- 当前工序 ---- */
+function currentStep(i, t) {
+  const arr = PROCESS[i] || [];
+  let acc = 0;
+  for (let k = 0; k < arr.length; k++) {
+    if (t < acc + arr[k].d || k === arr.length - 1) {
+      return { k: k, s: arr[k], local: Math.max(0, t - acc) };
+    }
+    acc += arr[k].d;
+  }
+  return { k: 0, s: arr[0], local: 0 };
+}
 
+/* ---- 工序条 ---- */
+function paintStepBar(i, t, total) {
+  const chip = document.getElementById('stChip');
+  const bar = document.querySelector('#stProg i');
+  const arr = PROCESS[i] || [];
+  const cur = currentStep(i, t);
+  if (chip && cur.s) {
+    chip.textContent = '工序 ' + (cur.k + 1) + '/' + arr.length + ' · ' + cur.s.n + ' ' + cur.s.temp;
+  }
+  if (bar) bar.style.width = clamp(t / total * 100, 0, 100) + '%';
+}
+
+function resetStepBar() {
+  const bar = document.querySelector('#stProg i');
+  if (bar) bar.style.width = '0%';
+}
+
+/* ---- 站切换 ---- */
+function runGoto(i) {
+  RUN.idx = i;
+  RUN.step = 0;
+  RUN.t = 0;
+  RUN.done = false;
   const st = STATIONS[i];
   RING.position.set(st.x, 0.045, 0);
-
   if (RUN.follow && typeof goTo === 'function') goTo(i, { fromRun: true, force: true });
+  paintStepBar(i, 0, stationDemo(i));
 }
 
 function runStart() {
   RUN.on = true;
   RUN.speed = 1;
+  /* 不透视就看不到液位，"开产"会显得什么都没发生 */
+  if (!XRAY.on) {
+    setXray(true);
+    const b = document.getElementById('btnXray');
+    if (b) b.classList.add('on');
+  }
   clearAllLevels();
-  runGoto(0, 'fill');
+  runGoto(0);
   setRunLabel(true);
   if (typeof setPlayingUI === 'function') setPlayingUI(true);
 }
 
 function runStop() {
   RUN.on = false;
-  RUN.phase = 'idle';
   RING.material.opacity = 0;
   SLUG.visible = false;
+  resetStepBar();
   if (!XRAY.on) clearAllLevels();
   setRunLabel(false);
   if (typeof setPlayingUI === 'function') setPlayingUI(false);
 }
 
-function runReset() {
-  runStop();
-  RUN.idx = -1;
+function runSeek(i) {
+  if (!RUN.on) return;
+  clearAllLevels();
+  runGoto(i);
 }
 
-/* ---- 顶部状态文字 ---- */
+/* ---- 顶部状态 ---- */
 function setRunLabel(on) {
   const el = document.getElementById('hudNote');
   if (!el) return;
-  if (on) {
-    el.textContent = '● 产线运行中';
-    el.style.color = '#1f5fd0';
-  } else {
-    el.textContent = '当前工段读数';
-    el.style.color = '';
-  }
+  if (on) { el.textContent = '● 产线运行中'; el.style.color = '#1f5fd0'; }
+  else { el.textContent = '当前工段读数'; el.style.color = ''; }
 }
 
 /* ---- 每帧 ---- */
@@ -3344,10 +3504,9 @@ function updateRun(dt, t) {
     return;
   }
 
-  const st = STATIONS[RUN.idx];
-  const dur = PHASE_DUR[RUN.phase] || 1;
+  const total = stationDemo(RUN.idx);
   RUN.t += dt * RUN.speed;
-  const p = clamp(RUN.t / dur, 0, 1);
+  const sp = clamp(RUN.t / total, 0, 1);
 
   /* 地环呼吸 */
   const pulse = 0.5 + 0.5 * Math.sin(t * 3.2);
@@ -3355,53 +3514,47 @@ function updateRun(dt, t) {
   const rs = 1 + 0.05 * pulse;
   RING.scale.set(rs, rs, 1);
 
-  const vs = vesselsOf(RUN.idx);
+  /* 液位：前 18% 进料，中段保持，最后 14% 排空 */
+  let lv;
+  if (sp < 0.18) lv = sp / 0.18 * 0.72;
+  else if (sp < 0.86) lv = 0.72;
+  else lv = (1 - (sp - 0.86) / 0.14) * 0.72;
 
-  if (RUN.phase === 'fill') {
-    for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], easeOutCubic(p));
-    SLUG.visible = false;
-  } else if (RUN.phase === 'process') {
-    /* 七成满：留出液面，才像"罐里有液体"而不是塞了一块固体 */
-    for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], 0.72);
-    SLUG.visible = false;
-  } else if (RUN.phase === 'transfer') {
-    for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], 1 - easeInOutCubic(p));
-    /* 液滴沿产线流向下一站 */
-    const next = STATIONS[Math.min(RUN.idx + 1, STATIONS.length - 1)];
-    const x0 = st.x, x1 = next.x;
+  const vs = vesselsOf(RUN.idx);
+  for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], lv);
+
+  /* 末段输送：液滴飞向下一站 */
+  if (sp > 0.88 && RUN.idx < STATIONS.length - 1) {
+    const a = STATIONS[RUN.idx], b = STATIONS[RUN.idx + 1];
+    const q = clamp((sp - 0.88) / 0.12, 0, 1);
     SLUG.visible = true;
-    SLUG.position.set(
-      lerp(x0, x1, easeInOutCubic(p)),
-      0.95 + Math.sin(p * Math.PI) * 0.35,
-      0.55
-    );
-    const ss = 0.9 + 0.25 * Math.sin(p * Math.PI * 3);
-    SLUG.scale.setScalar(ss);
+    SLUG.position.set(lerp(a.x, b.x, easeInOutCubic(q)), 0.95 + Math.sin(q * Math.PI) * 0.35, 0.55);
+    SLUG.scale.setScalar(0.9 + 0.25 * Math.sin(q * Math.PI * 3));
+  } else {
+    SLUG.visible = false;
   }
 
-  /* 进度推进 */
-  if (RUN.t >= dur) {
-    if (RUN.phase === 'fill') { RUN.phase = 'process'; RUN.t = 0; }
-    else if (RUN.phase === 'process') { RUN.phase = 'transfer'; RUN.t = 0; }
-    else if (RUN.phase === 'transfer') {
-      if (RUN.idx >= STATIONS.length - 1) {
-        RUN.phase = 'done';
-        RUN.t = 0;
-        setRunLabel(false);
-        const el = document.getElementById('hudNote');
-        if (el) { el.textContent = '● 本轮完成'; el.style.color = '#18874d'; }
-      } else {
-        runGoto(RUN.idx + 1, 'fill');
-      }
+  const cur = currentStep(RUN.idx, RUN.t);
+  RUN.step = cur.k;
+  paintStepBar(RUN.idx, RUN.t, total);
+
+  /* 推进 */
+  if (RUN.t >= total) {
+    if (RUN.idx >= STATIONS.length - 1) {
+      RUN.done = true;
+      setRunLabel(false);
+      const el = document.getElementById('hudNote');
+      if (el) { el.textContent = '● 本轮完成'; el.style.color = '#18874d'; }
+      const chip = document.getElementById('stChip');
+      if (chip) chip.textContent = '成品 · 装瓶待运';
+      RUN.on = false;
+      SLUG.visible = false;
+      if (typeof State !== 'undefined') State.playing = false;   /* 否则第一次点击播放无反应 */
+      if (typeof setPlayingUI === 'function') setPlayingUI(false);
+    } else {
+      runGoto(RUN.idx + 1);
     }
   }
-}
-
-/* 运行中手动点工段：跳到那一段继续跑 */
-function runSeek(i) {
-  if (!RUN.on) return;
-  clearAllLevels();
-  runGoto(i, 'fill');
 }
 
 /* ---- 50-ui.js ---- */
@@ -3452,7 +3605,7 @@ const LABEL_Y = [5.35, 3.90, 2.85, 2.60, 3.75, 1.55, 2.20, 4.25, 1.62, 1.75];
     const b = document.createElement('button');
     b.className = 'tl-node' + (i === 0 ? ' on' : '');
     b.dataset.i = i;
-    b.innerHTML = '<span class="no">' + st.no + '</span><span class="dot"></span><span class="nm">' + st.name.replace(' · ', '·') + '</span>';
+    b.innerHTML = '<span class="no">' + st.no + '</span><span class="dot"></span><span class="nm">' + st.name.replace(/ · /g, '·') + '</span>';
     b.addEventListener('click', function () { goTo(i); });
     track.appendChild(b);
   });
@@ -3467,7 +3620,7 @@ const LABELS = [];
   STATIONS.forEach(function (st, i) {
     const el = document.createElement('button');
     el.className = 'lab';
-    el.innerHTML = '<i>' + st.no + '</i><span>' + st.name.replace(' · ', '·') + '</span>';
+    el.innerHTML = '<i>' + st.no + '</i><span>' + st.name.replace(/ · /g, '·') + '</span>';
     el.style.pointerEvents = 'auto';
     el.addEventListener('click', function () { goTo(i); });
     box.appendChild(el);
@@ -3485,7 +3638,8 @@ function updateLabels() {
     _v.project(camera);
     const px = (_v.x * 0.5 + 0.5) * w;
     const py = (-_v.y * 0.5 + 0.5) * h;
-    const outside = _v.z >= 1 || px < -70 || px > w + 70 || py < 42 || py > h - 16;
+    const far = overview ? false : (Math.abs(i - State.idx) > 2);
+    const outside = _v.z >= 1 || far || px < -70 || px > w + 70 || py < 30 || py > h + 10;
 
     if (outside) {
       if (L.shown !== false) { L.el.style.display = 'none'; L.shown = false; }
@@ -3493,8 +3647,9 @@ function updateLabels() {
     }
     if (L.shown !== true) { L.el.style.display = ''; L.shown = true; }
 
-    /* 只在整数像素变化时写样式；用 transform 而非 left/top，不触发重排 */
-    const rx = Math.round(px), ry = Math.round(py);
+    /* 贴边时夹到画布内，别把标签切一半 */
+    const rx = Math.round(clamp(px, 46, w - 46));
+    const ry = Math.round(clamp(py, 40, h - 18));
     if (rx !== L.lx || ry !== L.ly) {
       L.lx = rx; L.ly = ry;
       L.el.style.transform = 'translate3d(' + rx + 'px,' + ry + 'px,0) translate(-50%,-100%)';
@@ -3568,6 +3723,20 @@ function renderPanel() {
   html += '<div class="p-change">' + chHtml + '</div>';
   html += '<ul class="p-bullets">' + st.bullets.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul>';
   if (st.eq) html += '<div class="p-eq">' + st.eq + '</div>';
+
+  /* 工序参数表：直接取工艺层，文案与运行状态同源 */
+  const steps = PROCESS[State.idx] || [];
+  if (steps.length) {
+    html += '<div class="p-steps"><div class="ps-cap">工序与参数<span>' + steps.length + ' 道</span></div>';
+    steps.forEach(function (sp, k) {
+      html += '<div class="ps-row"><span class="k">' + (k + 1) + '</span>' +
+        '<div class="ps-b"><b>' + sp.n + '</b>' +
+        '<span class="t">' + sp.temp + ' · ' + sp.real + '</span>' +
+        '<i>' + sp.k + '</i></div>' +
+        '<em class="src">' + (sp.src || '') + '</em></div>';
+    });
+    html += '<div class="ps-src">参数依据：教材 S1/S2 · 《酿造酒工艺学》S4 · 工业工艺规程 S5</div></div>';
+  }
   html += '<div class="p-key"><span>要点</span>' + st.key + '</div>';
   if (st.note) html += '<div class="p-note"><span>注意</span> ' + st.note + '</div>';
   html += '<div class="p-book">' + BOOK_ICON + '<span>' + st.book + '</span></div>';
@@ -3624,7 +3793,7 @@ function goTo(i, opts) {
   $('#stNo').textContent = STATIONS[i].no;
   $('#stName').textContent = STATIONS[i].name;
   $('#stLead').textContent = STATIONS[i].lead;
-  $('#stChip').textContent = STATIONS[i].tag;
+  if (!RUN.on) $('#stChip').textContent = STATIONS[i].tag;
 
   renderPanel();
   updateHUD();
@@ -3644,6 +3813,7 @@ function setCellMode(on) {
   if (!hero) return;
   hero.front.visible = !on;
   if (hero.coneFront) hero.coneFront.visible = !on;
+  if (hero.frontParts) hero.frontParts.visible = !on;
   hero.liquid.visible = on;
   hero.coneLiq.visible = on;
   hero.jackets.forEach(function (j) { j.visible = !on; });
@@ -3855,7 +4025,10 @@ function initSim() {
   });
   readSim();
   paintSim();
-  window.addEventListener('resize', function () { if (!$('#overlay').hidden) paintSim(); });
+  if (!window.__simResize) {
+    window.__simResize = function () { if (!$('#overlay').hidden) paintSim(); };
+    window.addEventListener('resize', window.__simResize);
+  }
 }
 function readSim() {
   const g = function (id, d) { const e = $('#' + id); return e ? parseFloat(e.value) : d; };
@@ -4033,7 +4206,7 @@ function paintQuiz() {
 /* ---- 说明 ---- */
 function viewHelp() {
   return '<ul class="help-list">' +
-    '<li><span class="hk">1</span><div><b>点底部的播放键「开产」。</b>一批麦汁会从第 1 站走到第 10 站：' +
+    '<li><span class="hk">1</span><div><b>点底部的播放键。</b>一批麦汁会从第 1 站走到第 10 站：' +
     '当前设备的地面会亮起蓝环，罐内液位先涨后落，管道里有一颗琥珀色液滴流向下一站，' +
     '底部参数（温度/糖度/酒精度/pH）跟着变。再按一次暂停。</div></li>' +
     '<li><span class="hk">2</span><div><b>顶栏「透视」。</b>一键让所有罐壁变半透明，' +
@@ -4047,7 +4220,7 @@ function viewHelp() {
     '条件控制模拟、课堂检测。条件控制里拖动滑杆，能直观看到“温度过高酶变性失活”“有氧偏繁殖、无氧偏产酒”。</div></li>' +
     '<li><span class="hk">6</span><div><b>顶栏「标注」「沉浸」。</b>标注控制设备标签显示；' +
     '沉浸收起右侧知识栏、让三维画面变宽。两个开关的偏好会记住。</div></li>' +
-    '<li><span class="hk">7</span><div><b>键盘：</b>← → 切换工段，1–9 直达，空格开产/暂停，Esc 关闭弹层。</div></li>' +
+    '<li><span class="hk">7</span><div><b>键盘：</b>← → 切换工段，1–9 与 0 直达十站，空格开始/暂停，Esc 关闭弹层。</div></li>' +
     '<li><span class="hk">8</span><div><b>关于准确性：</b>文案与人教版（2019）必修1第5章、' +
     '选择性必修3第1章一致。能量数值中，2870 kJ / 1161 kJ 为教材数值；酒精发酵 225 kJ / 61 kJ ' +
     '为常用参考值，并已与乳酸发酵的 196.65 kJ 明确区分。</div></li>' +
@@ -4136,6 +4309,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'ArrowRight') { goTo(State.idx + 1); e.preventDefault(); }
   else if (e.key === 'ArrowLeft') { goTo(State.idx - 1); e.preventDefault(); }
   else if (e.key === ' ') { setPlaying(!State.playing); e.preventDefault(); }
+  else if (e.key === '0') { goTo(9); }
   else if (e.key >= '1' && e.key <= '9') { goTo(parseInt(e.key, 10) - 1); }
 });
 
@@ -4238,6 +4412,7 @@ const STATS = (function () {
       '请在浏览器设置中开启「使用硬件加速」，或改用 Chrome / Edge 打开。';
     document.body.appendChild(b);
     setTimeout(function () { b.classList.add('show'); }, 900);
+    setTimeout(function () { b.classList.remove('show'); }, 13000);
   }
 
   applyLabels(PREF.labels !== false);

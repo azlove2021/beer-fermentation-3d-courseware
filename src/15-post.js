@@ -7,7 +7,7 @@
 'use strict';
 
 const LOOK = {
-  exposure: 0.86,
+  exposure: 0.80,
   bloomOn: true,
   bloomThreshold: 1.30,
   bloomKnee: 0.52,

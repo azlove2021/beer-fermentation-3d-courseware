@@ -7,7 +7,7 @@ SRC = os.path.join(ROOT, 'src')
 OUT = os.path.join(ROOT, '啤酒发酵工厂·生产流程课件.html')
 OUT_INDEX = os.path.join(ROOT, 'index.html')   # 供 GitHub Pages 直接访问
 
-JS_FILES = ['00-data.js', '01-util.js', '10-scene.js', '15-post.js',
+JS_FILES = ['00-data.js', '05-process.js', '01-util.js', '10-scene.js', '15-post.js',
             '20-factory.js', '30-fx.js', '35-run.js', '50-ui.js']
 
 

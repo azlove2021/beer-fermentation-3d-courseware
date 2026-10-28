@@ -315,9 +315,10 @@ glCanvas.addEventListener('wheel', e => {
    尺寸
    --------------------------------------------------------- */
 function resize() {
-  const stage = document.getElementById('stage');
-  const w = Math.max(2, stage.clientWidth);
-  const h = Math.max(2, stage.clientHeight);
+  /* 必须取画布自己的容器：#stage 还包含信息带与参数条，用它会把画面纵向压扁 */
+  const host = document.getElementById('stageCanvas') || document.getElementById('stage');
+  const w = Math.max(2, host.clientWidth);
+  const h = Math.max(2, host.clientHeight);
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   /* 竖屏 / 窄窗口时拉大视角，保证设备完整进画 */

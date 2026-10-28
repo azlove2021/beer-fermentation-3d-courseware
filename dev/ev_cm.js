@@ -1,0 +1,1 @@
+(function(){ goTo(7,{force:true}); flyTo(stationView(7), true); setCellMode(true); return 'ok'; })()

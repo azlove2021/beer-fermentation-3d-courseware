@@ -429,7 +429,7 @@ function gauge(x, y, z, s, faceZ) {
 })();
 
 /* =========================================================
-   03 · 糖化锅（铜）
+   04 · 糖化锅（铜）
    ========================================================= */
 (function mashTun() {
   const g = new THREE.Group();
@@ -490,7 +490,7 @@ function gauge(x, y, z, s, faceZ) {
 let RAKE_ARM = null;
 
 /* =========================================================
-   04 · 过滤槽
+   05 · 过滤槽
    ========================================================= */
 (function lauter() {
   const g = new THREE.Group();
@@ -546,7 +546,7 @@ let RAKE_ARM = null;
 })();
 
 /* =========================================================
-   05 · 煮沸锅
+   06 · 煮沸锅
    ========================================================= */
 (function kettle() {
   const g = new THREE.Group();
@@ -605,7 +605,7 @@ let RAKE_ARM = null;
 })();
 
 /* =========================================================
-   06 · 回旋沉淀槽 + 板式换热器
+   07 · 回旋沉淀槽 + 板式换热器
    ========================================================= */
 (function whirlpool() {
   const g = new THREE.Group();
@@ -711,14 +711,15 @@ function buildFermenter(x, z, scale, hero) {
   /* 支腿 + 裙座 */
   legs(g, R, 1.02, 4, 0, R * 0.86);
 
-  /* 侧视镜 */
-  sightGlass(0, 1.62, R * 0.995, 0.13, g, false);
-
-  /* 取样阀 */
+  /* 侧视镜与取样阀挂在"前半壳"上：剖切时一起收掉，
+     否则会留下悬空的金属环和小圆点浮在液面上 */
+  const frontParts = new THREE.Group();
+  g.add(frontParts);
+  sightGlass(0, 1.40, R * 0.995, 0.13, frontParts, false);
   const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.12, 10), MAT.brass);
   valve.rotation.x = Math.PI / 2;
   valve.position.set(0, 0.95, R * 0.95);
-  g.add(valve);
+  frontParts.add(valve);
 
   /* 内部：液体 / 气泡 / 酵母 */
   const liquidH = 1.62;
@@ -728,16 +729,16 @@ function buildFermenter(x, z, scale, hero) {
   );
   liquid.position.y = 1.02 + liquidH / 2;
   liquid.visible = false;
-  liquid.renderOrder = 1;
+  liquid.renderOrder = -1;
   g.add(liquid);
-  VESSELS.push({ mesh: liquid, baseY: 1.02, full: liquidH, station: hero ? 7 : 7, hero: true });
+  VESSELS.push({ mesh: liquid, baseY: 1.02, full: liquidH, station: 7, hero: !!hero });
 
   /* 锥底积液 */
   const coneLiq = new THREE.Mesh(latheGeo([
     [0.06, 0.10], [0.30, 0.32], [R * 0.62, 0.68], [R * 0.93, 0.99], [R * 0.93, 1.02]
   ], 40), MAT.beer);
   coneLiq.visible = false;
-  coneLiq.renderOrder = 1;
+  coneLiq.renderOrder = -1;
   g.add(coneLiq);
 
   /* 只有会被剖开的教学罐才需要内部光源；其余罐体的光完全被罐壁挡住 */
@@ -750,7 +751,7 @@ function buildFermenter(x, z, scale, hero) {
 
   const rec = {
     group: g, x: x, z: z, scale: s, R: R,
-    front: front, back: back, coneFront: coneFront, coneBack: coneBack,
+    front: front, back: back, coneFront: coneFront, coneBack: coneBack, frontParts: frontParts,
     liquid: liquid, coneLiq: coneLiq,
     jackets: jackets, light: innerLight, hero: !!hero,
     liquidH: liquidH, cut: false
@@ -761,8 +762,8 @@ function buildFermenter(x, z, scale, hero) {
 }
 
 /* 三只主发酵罐 + 一只酵母扩培罐 */
-buildFermenter(3.60, -0.55, 1.00, true);
-buildFermenter(4.70, -0.55, 1.00, false);
+buildFermenter(3.60, -0.55, 1.00, false);
+buildFermenter(4.70, -0.55, 1.00, true);
 buildFermenter(5.80, -0.55, 1.00, false);
 buildFermenter(2.55, 1.42, 0.46, false);
 
@@ -1022,8 +1023,8 @@ key.shadow.camera.updateProjectionMatrix();
    前场道具：填掉台座左前方的空地，同时交代物料
    ========================================================= */
 (function props() {
-  const burlap = new THREE.MeshStandardMaterial({ color: 0xb9a276, roughness: 0.88, metalness: 0.0 });
-  const burlapD = new THREE.MeshStandardMaterial({ color: 0x8e7a55, roughness: 0.9, metalness: 0.0 });
+  const burlap = new THREE.MeshStandardMaterial({ color: 0x9c8862, roughness: 0.96, metalness: 0.0 });
+  const burlapD = new THREE.MeshStandardMaterial({ color: 0x7a6847, roughness: 0.97, metalness: 0.0 });
 
   /* 麻袋：压扁的球，堆成金字塔 */
   const sackGeo = new THREE.SphereGeometry(0.30, 14, 10);

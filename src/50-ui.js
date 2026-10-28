@@ -194,6 +194,8 @@ function stationView(i) {
 function goTo(i, opts) {
   opts = opts || {};
   i = clamp(i, 0, STATIONS.length - 1);
+  /* 运行中手动跳站：让批次也跟着跳，不要停 */
+  if (RUN.on && !opts.fromRun) { runSeek(i); return; }
   if (i === State.idx && !opts.force) { renderPanel(); updateHUD(); return; }
 
   State.idx = i;
@@ -624,12 +626,24 @@ function paintQuiz() {
 /* ---- 说明 ---- */
 function viewHelp() {
   return '<ul class="help-list">' +
-    '<li><span class="hk">1</span><div><b>拖动旋转、滚轮缩放。</b>画面里是程序化生成的三维产线，九个工段从左到右依次排布，与底部时间轴一一对应。</div></li>' +
-    '<li><span class="hk">2</span><div><b>点时间轴或画面上的标注</b>切换工段，镜头会推到对应设备，右侧换成该工段的生物学解释与教材出处。</div></li>' +
-    '<li><span class="hk">3</span><div><b>第 7 工段“接种·主发酵”</b>可以进入发酵罐剖视：罐壁前半被切掉，能看到酵母、气泡和流动的麦汁；再点左侧“分子”按钮或面板里的按钮即可进出。</div></li>' +
-    '<li><span class="hk">4</span><div><b>左侧五个入口</b>分别是工厂全景、细胞呼吸对比、发酵工程七步、条件控制模拟、课堂检测。条件控制里拖动滑杆，能直观看到“温度过高酶变性失活”“有氧偏向繁殖、无氧偏向产酒”。</div></li>' +
-    '<li><span class="hk">5</span><div><b>键盘：</b>← → 切换工段，1–9 直达，空格播放/暂停自动巡演，Esc 关闭弹层。</div></li>' +
-    '<li><span class="hk">6</span><div><b>关于准确性：</b>文案与人教版（2019）必修1第5章、选择性必修3第1章一致。能量数值中，2870 kJ / 1161 kJ 为教材数值；酒精发酵 225 kJ / 61 kJ 为常用参考值，并已与乳酸发酵的 196.65 kJ 明确区分。</div></li>' +
+    '<li><span class="hk">1</span><div><b>点底部的播放键「开产」。</b>一批麦汁会从第 1 站走到第 10 站：' +
+    '当前设备的地面会亮起蓝环，罐内液位先涨后落，管道里有一颗琥珀色液滴流向下一站，' +
+    '底部参数（温度/糖度/酒精度/pH）跟着变。再按一次暂停。</div></li>' +
+    '<li><span class="hk">2</span><div><b>顶栏「透视」。</b>一键让所有罐壁变半透明，' +
+    '能直接看到罐内液位、气泡与管道里的流动——讲“罐子里在发生什么”时用这个。' +
+    '再点一次关闭。</div></li>' +
+    '<li><span class="hk">3</span><div><b>点时间轴或画面上的标注</b>切换工段，镜头推到对应设备，' +
+    '右侧换成该工段的生物学解释与教材出处。运行中跳站，批次也会跟着跳过去，不会中断。</div></li>' +
+    '<li><span class="hk">4</span><div><b>第 8 工段「主发酵」</b>还能进入发酵罐剖视：' +
+    '罐壁前半被切掉，看到酵母、气泡与液面。</div></li>' +
+    '<li><span class="hk">5</span><div><b>左侧五个入口</b>：工厂全景、细胞呼吸对比、发酵工程七步、' +
+    '条件控制模拟、课堂检测。条件控制里拖动滑杆，能直观看到“温度过高酶变性失活”“有氧偏繁殖、无氧偏产酒”。</div></li>' +
+    '<li><span class="hk">6</span><div><b>顶栏「标注」「沉浸」。</b>标注控制设备标签显示；' +
+    '沉浸收起右侧知识栏、让三维画面变宽。两个开关的偏好会记住。</div></li>' +
+    '<li><span class="hk">7</span><div><b>键盘：</b>← → 切换工段，1–9 直达，空格开产/暂停，Esc 关闭弹层。</div></li>' +
+    '<li><span class="hk">8</span><div><b>关于准确性：</b>文案与人教版（2019）必修1第5章、' +
+    '选择性必修3第1章一致。能量数值中，2870 kJ / 1161 kJ 为教材数值；酒精发酵 225 kJ / 61 kJ ' +
+    '为常用参考值，并已与乳酸发酵的 196.65 kJ 明确区分。</div></li>' +
     '</ul>';
 }
 
@@ -673,6 +687,12 @@ function applyImmersive(on) {
   setTimeout(function () { resize(); }, 540);
 }
 $('#btnLabels').addEventListener('click', function () { applyLabels(!PREF.labels); });
+$('#btnXray').addEventListener('click', function () {
+  const on = !XRAY.on;
+  setXray(on);
+  $('#btnXray').classList.toggle('on', on);
+  PREF.xray = on; savePref();
+});
 $('#btnImmersive').addEventListener('click', function () { applyImmersive(!PREF.immersive); });
 
 $('#viewSeg').addEventListener('click', function (e) {
@@ -691,12 +711,16 @@ $$('.rail-btn[data-view]').forEach(function (b) {
   });
 });
 
-function setPlaying(on) {
-  State.playing = on;
+function setPlayingUI(on) {
   $('#btnPlay').classList.toggle('on', on);
   $('#btnPlay .ico-play').style.display = on ? 'none' : '';
   $('#btnPlay .ico-pause').style.display = on ? '' : 'none';
-  State.autoT = 0;
+}
+
+function setPlaying(on) {
+  State.playing = on;
+  setPlayingUI(on);
+  if (on) runStart(); else runStop();
 }
 
 document.addEventListener('keydown', function (e) {
@@ -730,17 +754,9 @@ function frame(now) {
   FLOW.update(dt, t);
   updateBottles(dt);
   updateDetails(dt, t);
+  updateRun(dt, t);
   updateLabels();
 
-  /* 自动巡演 */
-  if (State.playing) {
-    State.autoT += dt;
-    if (State.autoT > 6.2) {
-      State.autoT = 0;
-      if (State.idx < STATIONS.length - 1) goTo(State.idx + 1);
-      else setPlaying(false);
-    }
-  }
 
   renderScene(dt);
 
@@ -818,6 +834,7 @@ const STATS = (function () {
   }
 
   applyLabels(PREF.labels !== false);
+  if (PREF.xray) { setXray(true); $('#btnXray').classList.add('on'); }
   applyImmersive(!!PREF.immersive);
 
   const fill = $('#ldFill');

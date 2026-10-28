@@ -1,0 +1,1 @@
+(function(){ openOverlay('help'); return 'help'; })()

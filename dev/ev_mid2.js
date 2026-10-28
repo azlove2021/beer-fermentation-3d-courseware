@@ -1,0 +1,1 @@
+(async function(){ await new Promise(r=>setTimeout(r,9000)); return {idx:RUN.idx, phase:RUN.phase, lvl: VESSELS.map(v=>({s:v.station, vis:v.mesh.visible}))}; })()

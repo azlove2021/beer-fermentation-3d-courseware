@@ -582,6 +582,10 @@ input[type=range]::-webkit-slider-thumb{
         <svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="18" cy="7" r="2"/></svg>
         <span>标注</span>
       </button>
+      <button class="tool-btn" id="btnXray" title="透视：看穿罐壁，看到液位与内部">
+        <svg viewBox="0 0 24 24"><path d="M12 3s7 4 7 9-7 9-7 9-7-4-7-9 7-9 7-9z"/><path d="M4.5 12h15" stroke-dasharray="2 2.4"/></svg>
+        <span>透视</span>
+      </button>
       <button class="tool-btn" id="btnImmersive" title="收起右侧栏，放大三维画面">
         <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5"/></svg>
         <span>沉浸</span>
@@ -1808,8 +1812,8 @@ const MAT = {
     roughness: 0.18, metalness: 0.0, transparent: true, opacity: 0.88
   }),
   beer: new THREE.MeshStandardMaterial({ 
-    color: 0xf0a02a, emissive: 0xd97a06, emissiveIntensity: 0.22,
-    roughness: 0.10, metalness: 0.0, transparent: true, opacity: 0.44,
+    color: 0xf0a02a, emissive: 0xc96f05, emissiveIntensity: 0.16,
+    roughness: 0.10, metalness: 0.0, transparent: true, opacity: 0.78,
     depthWrite: false, side: THREE.DoubleSide
   }),
   teal: new THREE.MeshStandardMaterial({ 
@@ -1822,6 +1826,37 @@ const MAT = {
 };
 
 Object.keys(MAT).forEach(function (k) { MAT[k].name = k; });
+
+
+/* =========================================================
+   液位容器
+   每台"装液体的"设备挂一只可升降的液柱，供产线联动与透视模式驱动。
+   ========================================================= */
+const VESSELS = [];
+
+function vesselLiquid(parent, r, y0, y1, station) {
+  const full = y1 - y0;
+  const m = new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r, full, 32, 1, false),
+    MAT.beer
+  );
+  m.position.y = y0 + full / 2;
+  m.scale.y = 0.001;
+  m.visible = false;
+  m.renderOrder = 1;
+  parent.add(m);
+  VESSELS.push({ mesh: m, baseY: y0, full: full, station: station });
+  return m;
+}
+
+/* 设置液位 0..1 */
+function setVesselLevel(v, lv) {
+  lv = clamp(lv, 0, 1);
+  const h = Math.max(0.001, v.full * lv);
+  v.mesh.scale.y = h / v.full;
+  v.mesh.position.y = v.baseY + h / 2;
+  v.mesh.visible = lv > 0.02;
+}
 
 /* ---- 基础构件 ---- */
 const FACTORY = new THREE.Group();
@@ -2200,6 +2235,7 @@ function gauge(x, y, z, s, faceZ) {
   j1.position.set(-R - 0.08, 1.20, 0);
   g.add(j1);
 
+  vesselLiquid(g, 0.86, 0.42, 1.84, 3);
   floorGlow(-4.25, -0.15, 3.4, 0xff8f1f, 0.24);
   const pl = new THREE.PointLight(0xff8a12, 1.5, 4.2, 2);
   pl.position.set(0, 1.15, 1.1);
@@ -2231,11 +2267,8 @@ let RAKE_ARM = null;
   rim.position.y = 1.19;
   g.add(rim);
 
-  /* 槽内麦汁液面 */
-  const bed = new THREE.Mesh(new THREE.CircleGeometry(R * 0.88, 44), MAT.wort);
-  bed.rotation.x = -Math.PI / 2;
-  bed.position.y = 0.98;
-  g.add(bed);
+  /* 槽内麦汁液位 */
+  vesselLiquid(g, R * 0.88, 0.48, 0.98, 3);
 
   /* 耙臂（玻璃盖下可见） */
   const rake = new THREE.Group();
@@ -2314,6 +2347,8 @@ let RAKE_ARM = null;
   hop.position.set(0.42, 2.86, 0.30);
   g.add(hop);
 
+  vesselLiquid(g, R * 0.80, 0.40, 2.42, 4);
+
   legs(g, R, 0.27, 6, 0, R * 0.88);
 
   /* 加热蒸汽管 */
@@ -2343,6 +2378,8 @@ let RAKE_ARM = null;
 
   /* 切向进料管——回旋沉淀的关键结构 */
   pipe([[R + 0.55, 1.20, -0.30], [R + 0.20, 1.05, -0.15], [R * 0.92, 0.95, 0.10], [R * 0.86, 0.95, 0.55]], 0.055, MAT.steel, g);
+
+  vesselLiquid(g, R * 0.92, 0.55, 1.00, 5);
 
   legs(g, R, 0.46, 6, 0, R * 0.92);
   floorGlow(1.20, 0.45, 2.6, 0xffa63a, 0.10);
@@ -2449,6 +2486,7 @@ function buildFermenter(x, z, scale, hero) {
   liquid.visible = false;
   liquid.renderOrder = 1;
   g.add(liquid);
+  VESSELS.push({ mesh: liquid, baseY: 1.02, full: liquidH, station: hero ? 7 : 7, hero: true });
 
   /* 锥底积液 */
   const coneLiq = new THREE.Mesh(latheGeo([
@@ -2885,35 +2923,65 @@ key.shadow.camera.updateProjectionMatrix();
    ========================================================= */
 'use strict';
 
-/* ---- 通用粒子场 ---- */
+/* ---- 通用粒子场 ----
+   浅色背景下加色混合会把粒子"加白"到看不见，所以改成
+   带逐粒子 alpha 的普通混合：颜色正常、透明度单独控制。 */
+const PT_VERT = [
+  'uniform float uSize;',
+  'attribute float aAlpha;',
+  'attribute vec3 aColor;',
+  'varying float vA;',
+  'varying vec3 vC;',
+  'void main(){',
+  '  vA = aAlpha; vC = aColor;',
+  '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+  '  gl_PointSize = uSize * (300.0 / max(0.001, -mv.z));',
+  '  gl_Position = projectionMatrix * mv;',
+  '}'
+].join('\n');
+
+const PT_FRAG = [
+  'uniform sampler2D uMap;',
+  'varying float vA;',
+  'varying vec3 vC;',
+  'void main(){',
+  '  vec4 t = texture2D(uMap, gl_PointCoord);',
+  '  float a = t.a * vA;',
+  '  if (a < 0.004) discard;',
+  '  gl_FragColor = vec4(vC * t.rgb, a);',
+  '}'
+].join('\n');
+
 function makeParticles(count, opt) {
   opt = opt || {};
   const pos = new Float32Array(count * 3);
   const col = new Float32Array(count * 3);
+  const alp = new Float32Array(count);
   const data = [];
   for (let i = 0; i < count; i++) {
-    data.push({
-      x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
-      life: Math.random(), max: 1, size: 1
-    });
+    data.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: Math.random(), max: 1, size: 1 });
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const mat = new THREE.PointsMaterial({
-    size: opt.size || 0.3,
-    map: opt.map || null,
-    vertexColors: true,
+  geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(alp, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uSize: { value: opt.size || 0.3 },
+      uMap: { value: opt.map || null }
+    },
+    vertexShader: PT_VERT,
+    fragmentShader: PT_FRAG,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    sizeAttenuation: true,
-    opacity: opt.opacity === undefined ? 1 : opt.opacity
+    depthTest: true
   });
+
   const pts = new THREE.Points(geo, mat);
   pts.frustumCulled = false;
   scene.add(pts);
-  return { points: pts, pos: pos, col: col, data: data, geo: geo, count: count };
+  return { points: pts, pos: pos, col: col, alp: alp, data: data, geo: geo, count: count, mat: mat };
 }
 
 /* ---- 柔光点贴图 ---- */
@@ -2968,13 +3036,15 @@ const STEAM = (function () {
       field.pos[i * 3] = d.x;
       field.pos[i * 3 + 1] = d.y;
       field.pos[i * 3 + 2] = d.z;
-      const v = fade * 0.62;
-      field.col[i * 3] = v;
-      field.col[i * 3 + 1] = v * 0.98;
-      field.col[i * 3 + 2] = v * 0.92;
+      /* 浅色场景：蒸汽做成偏冷的淡灰，靠 alpha 淡出 */
+      field.col[i * 3] = 0.80;
+      field.col[i * 3 + 1] = 0.85;
+      field.col[i * 3 + 2] = 0.90;
+      field.alp[i] = fade * 0.80;
     }
     field.geo.attributes.position.needsUpdate = true;
-    field.geo.attributes.color.needsUpdate = true;
+    field.geo.attributes.aColor.needsUpdate = true;
+    field.geo.attributes.aAlpha.needsUpdate = true;
   }
   return { update: update };
 })();
@@ -3047,13 +3117,15 @@ const TANK_FX = FERMENTERS.map(function (rec) {
       field.pos[i * 3] = d.x + Math.sin(t * 2.2 + i) * 0.012 * S;
       field.pos[i * 3 + 1] = d.y;
       field.pos[i * 3 + 2] = d.z;
-      const v = 0.55 + 0.35 * Math.sin(t * 3 + i);
-      field.col[i * 3] = v * 0.95;
-      field.col[i * 3 + 1] = v * 0.62;
-      field.col[i * 3 + 2] = v * 0.18;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 3 + i);
+      field.col[i * 3] = 0.95;
+      field.col[i * 3 + 1] = 0.66;
+      field.col[i * 3 + 2] = 0.20;
+      field.alp[i] = 0.40 + 0.55 * pulse;
     }
     field.geo.attributes.position.needsUpdate = true;
-    field.geo.attributes.color.needsUpdate = true;
+    field.geo.attributes.aColor.needsUpdate = true;
+    field.geo.attributes.aAlpha.needsUpdate = true;
 
     for (let i = 0; i < YN; i++) {
       const p = yd[i];
@@ -3095,12 +3167,14 @@ const FLOW = (function () {
       it.curve.getPointAt(it.t, v);
       field.pos[i * 3] = v.x; field.pos[i * 3 + 1] = v.y; field.pos[i * 3 + 2] = v.z;
       const pulse = 0.55 + 0.45 * Math.sin(t * 4 + i);
-      field.col[i * 3] = pulse * 1.0;
-      field.col[i * 3 + 1] = pulse * 0.66;
-      field.col[i * 3 + 2] = pulse * 0.22;
+      field.col[i * 3] = 0.94;
+      field.col[i * 3 + 1] = 0.52;
+      field.col[i * 3 + 2] = 0.10;
+      field.alp[i] = 0.35 + 0.55 * pulse;
     }
     field.geo.attributes.position.needsUpdate = true;
-    field.geo.attributes.color.needsUpdate = true;
+    field.geo.attributes.aColor.needsUpdate = true;
+    field.geo.attributes.aAlpha.needsUpdate = true;
   }
   return { update: update };
 })();
@@ -3137,6 +3211,197 @@ function updateDetails(dt, t) {
     if (!rec.light) continue;
     rec.light.intensity = damp(rec.light.intensity, rec.cut ? 0.55 : 0.22, 4, dt);
   }
+}
+
+/* ---- 35-run.js ---- */
+/* =========================================================
+   35 · 产线联动
+   一条"批次"沿十个工段推进：进料 → 反应 → 输送到下一站。
+   液位、地环、传输液滴、HUD 读数都由同一个状态机驱动。
+   ========================================================= */
+'use strict';
+
+const RUN = {
+  on: false,
+  idx: -1,
+  phase: 'idle',      /* idle | fill | process | transfer | done */
+  t: 0,
+  speed: 1,
+  follow: true
+};
+
+const PHASE_DUR = { fill: 0.9, process: 2.6, transfer: 1.1 };
+
+/* ---- 工段地环 ---- */
+const RING = new THREE.Mesh(
+  new THREE.RingGeometry(1.38, 1.58, 72),
+  new THREE.MeshBasicMaterial({
+    color: 0x1f5fd0, transparent: true, opacity: 0, side: THREE.DoubleSide,
+    depthWrite: false, fog: false
+  })
+);
+RING.rotation.x = -Math.PI / 2;
+RING.position.y = 0.045;
+RING.renderOrder = 3;
+scene.add(RING);
+
+/* ---- 传输液滴 ---- */
+const SLUG = new THREE.Mesh(
+  new THREE.SphereGeometry(0.085, 16, 12),
+  new THREE.MeshStandardMaterial({
+    color: 0xf0a02a, emissive: 0xc4760a, emissiveIntensity: 0.45,
+    roughness: 0.35, metalness: 0.0
+  })
+);
+SLUG.visible = false;
+scene.add(SLUG);
+
+/* ---- 透视 ---- */
+const XRAY = { on: false };
+
+function setXray(on) {
+  XRAY.on = on;
+  [MAT.steelBody, MAT.copperBody].forEach(function (m) {
+    m.transparent = on;
+    m.opacity = on ? 0.44 : 1.0;
+    m.depthWrite = !on;
+    m.needsUpdate = true;
+  });
+  /* 不运行时也把液位摆出来，方便讲解 */
+  if (!RUN.on) {
+    for (let i = 0; i < VESSELS.length; i++) {
+      if (VESSELS[i].hero && State.cellMode) continue;
+      setVesselLevel(VESSELS[i], on ? 0.58 : 0);
+    }
+  }
+}
+
+/* ---- 每个工段的容器 ---- */
+function vesselsOf(i) {
+  const out = [];
+  for (let k = 0; k < VESSELS.length; k++) if (VESSELS[k].station === i) out.push(VESSELS[k]);
+  return out;
+}
+
+function clearAllLevels() {
+  for (let k = 0; k < VESSELS.length; k++) setVesselLevel(VESSELS[k], 0);
+}
+
+/* ---- 状态切换 ---- */
+function runGoto(i, phase) {
+  RUN.idx = i;
+  RUN.phase = phase || 'fill';
+  RUN.t = 0;
+
+  const st = STATIONS[i];
+  RING.position.set(st.x, 0.045, 0);
+
+  if (RUN.follow && typeof goTo === 'function') goTo(i, { fromRun: true, force: true });
+}
+
+function runStart() {
+  RUN.on = true;
+  RUN.speed = 1;
+  clearAllLevels();
+  runGoto(0, 'fill');
+  setRunLabel(true);
+  if (typeof setPlayingUI === 'function') setPlayingUI(true);
+}
+
+function runStop() {
+  RUN.on = false;
+  RUN.phase = 'idle';
+  RING.material.opacity = 0;
+  SLUG.visible = false;
+  if (!XRAY.on) clearAllLevels();
+  setRunLabel(false);
+  if (typeof setPlayingUI === 'function') setPlayingUI(false);
+}
+
+function runReset() {
+  runStop();
+  RUN.idx = -1;
+}
+
+/* ---- 顶部状态文字 ---- */
+function setRunLabel(on) {
+  const el = document.getElementById('hudNote');
+  if (!el) return;
+  if (on) {
+    el.textContent = '● 产线运行中';
+    el.style.color = '#1f5fd0';
+  } else {
+    el.textContent = '当前工段读数';
+    el.style.color = '';
+  }
+}
+
+/* ---- 每帧 ---- */
+function updateRun(dt, t) {
+  if (!RUN.on) {
+    RING.material.opacity = 0;
+    SLUG.visible = false;
+    return;
+  }
+
+  const st = STATIONS[RUN.idx];
+  const dur = PHASE_DUR[RUN.phase] || 1;
+  RUN.t += dt * RUN.speed;
+  const p = clamp(RUN.t / dur, 0, 1);
+
+  /* 地环呼吸 */
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3.2);
+  RING.material.opacity = 0.26 + 0.18 * pulse;
+  const rs = 1 + 0.05 * pulse;
+  RING.scale.set(rs, rs, 1);
+
+  const vs = vesselsOf(RUN.idx);
+
+  if (RUN.phase === 'fill') {
+    for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], easeOutCubic(p));
+    SLUG.visible = false;
+  } else if (RUN.phase === 'process') {
+    /* 七成满：留出液面，才像"罐里有液体"而不是塞了一块固体 */
+    for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], 0.72);
+    SLUG.visible = false;
+  } else if (RUN.phase === 'transfer') {
+    for (let i = 0; i < vs.length; i++) setVesselLevel(vs[i], 1 - easeInOutCubic(p));
+    /* 液滴沿产线流向下一站 */
+    const next = STATIONS[Math.min(RUN.idx + 1, STATIONS.length - 1)];
+    const x0 = st.x, x1 = next.x;
+    SLUG.visible = true;
+    SLUG.position.set(
+      lerp(x0, x1, easeInOutCubic(p)),
+      0.95 + Math.sin(p * Math.PI) * 0.35,
+      0.55
+    );
+    const ss = 0.9 + 0.25 * Math.sin(p * Math.PI * 3);
+    SLUG.scale.setScalar(ss);
+  }
+
+  /* 进度推进 */
+  if (RUN.t >= dur) {
+    if (RUN.phase === 'fill') { RUN.phase = 'process'; RUN.t = 0; }
+    else if (RUN.phase === 'process') { RUN.phase = 'transfer'; RUN.t = 0; }
+    else if (RUN.phase === 'transfer') {
+      if (RUN.idx >= STATIONS.length - 1) {
+        RUN.phase = 'done';
+        RUN.t = 0;
+        setRunLabel(false);
+        const el = document.getElementById('hudNote');
+        if (el) { el.textContent = '● 本轮完成'; el.style.color = '#18874d'; }
+      } else {
+        runGoto(RUN.idx + 1, 'fill');
+      }
+    }
+  }
+}
+
+/* 运行中手动点工段：跳到那一段继续跑 */
+function runSeek(i) {
+  if (!RUN.on) return;
+  clearAllLevels();
+  runGoto(i, 'fill');
 }
 
 /* ---- 50-ui.js ---- */
@@ -3336,6 +3601,8 @@ function stationView(i) {
 function goTo(i, opts) {
   opts = opts || {};
   i = clamp(i, 0, STATIONS.length - 1);
+  /* 运行中手动跳站：让批次也跟着跳，不要停 */
+  if (RUN.on && !opts.fromRun) { runSeek(i); return; }
   if (i === State.idx && !opts.force) { renderPanel(); updateHUD(); return; }
 
   State.idx = i;
@@ -3766,12 +4033,24 @@ function paintQuiz() {
 /* ---- 说明 ---- */
 function viewHelp() {
   return '<ul class="help-list">' +
-    '<li><span class="hk">1</span><div><b>拖动旋转、滚轮缩放。</b>画面里是程序化生成的三维产线，九个工段从左到右依次排布，与底部时间轴一一对应。</div></li>' +
-    '<li><span class="hk">2</span><div><b>点时间轴或画面上的标注</b>切换工段，镜头会推到对应设备，右侧换成该工段的生物学解释与教材出处。</div></li>' +
-    '<li><span class="hk">3</span><div><b>第 7 工段“接种·主发酵”</b>可以进入发酵罐剖视：罐壁前半被切掉，能看到酵母、气泡和流动的麦汁；再点左侧“分子”按钮或面板里的按钮即可进出。</div></li>' +
-    '<li><span class="hk">4</span><div><b>左侧五个入口</b>分别是工厂全景、细胞呼吸对比、发酵工程七步、条件控制模拟、课堂检测。条件控制里拖动滑杆，能直观看到“温度过高酶变性失活”“有氧偏向繁殖、无氧偏向产酒”。</div></li>' +
-    '<li><span class="hk">5</span><div><b>键盘：</b>← → 切换工段，1–9 直达，空格播放/暂停自动巡演，Esc 关闭弹层。</div></li>' +
-    '<li><span class="hk">6</span><div><b>关于准确性：</b>文案与人教版（2019）必修1第5章、选择性必修3第1章一致。能量数值中，2870 kJ / 1161 kJ 为教材数值；酒精发酵 225 kJ / 61 kJ 为常用参考值，并已与乳酸发酵的 196.65 kJ 明确区分。</div></li>' +
+    '<li><span class="hk">1</span><div><b>点底部的播放键「开产」。</b>一批麦汁会从第 1 站走到第 10 站：' +
+    '当前设备的地面会亮起蓝环，罐内液位先涨后落，管道里有一颗琥珀色液滴流向下一站，' +
+    '底部参数（温度/糖度/酒精度/pH）跟着变。再按一次暂停。</div></li>' +
+    '<li><span class="hk">2</span><div><b>顶栏「透视」。</b>一键让所有罐壁变半透明，' +
+    '能直接看到罐内液位、气泡与管道里的流动——讲“罐子里在发生什么”时用这个。' +
+    '再点一次关闭。</div></li>' +
+    '<li><span class="hk">3</span><div><b>点时间轴或画面上的标注</b>切换工段，镜头推到对应设备，' +
+    '右侧换成该工段的生物学解释与教材出处。运行中跳站，批次也会跟着跳过去，不会中断。</div></li>' +
+    '<li><span class="hk">4</span><div><b>第 8 工段「主发酵」</b>还能进入发酵罐剖视：' +
+    '罐壁前半被切掉，看到酵母、气泡与液面。</div></li>' +
+    '<li><span class="hk">5</span><div><b>左侧五个入口</b>：工厂全景、细胞呼吸对比、发酵工程七步、' +
+    '条件控制模拟、课堂检测。条件控制里拖动滑杆，能直观看到“温度过高酶变性失活”“有氧偏繁殖、无氧偏产酒”。</div></li>' +
+    '<li><span class="hk">6</span><div><b>顶栏「标注」「沉浸」。</b>标注控制设备标签显示；' +
+    '沉浸收起右侧知识栏、让三维画面变宽。两个开关的偏好会记住。</div></li>' +
+    '<li><span class="hk">7</span><div><b>键盘：</b>← → 切换工段，1–9 直达，空格开产/暂停，Esc 关闭弹层。</div></li>' +
+    '<li><span class="hk">8</span><div><b>关于准确性：</b>文案与人教版（2019）必修1第5章、' +
+    '选择性必修3第1章一致。能量数值中，2870 kJ / 1161 kJ 为教材数值；酒精发酵 225 kJ / 61 kJ ' +
+    '为常用参考值，并已与乳酸发酵的 196.65 kJ 明确区分。</div></li>' +
     '</ul>';
 }
 
@@ -3815,6 +4094,12 @@ function applyImmersive(on) {
   setTimeout(function () { resize(); }, 540);
 }
 $('#btnLabels').addEventListener('click', function () { applyLabels(!PREF.labels); });
+$('#btnXray').addEventListener('click', function () {
+  const on = !XRAY.on;
+  setXray(on);
+  $('#btnXray').classList.toggle('on', on);
+  PREF.xray = on; savePref();
+});
 $('#btnImmersive').addEventListener('click', function () { applyImmersive(!PREF.immersive); });
 
 $('#viewSeg').addEventListener('click', function (e) {
@@ -3833,12 +4118,16 @@ $$('.rail-btn[data-view]').forEach(function (b) {
   });
 });
 
-function setPlaying(on) {
-  State.playing = on;
+function setPlayingUI(on) {
   $('#btnPlay').classList.toggle('on', on);
   $('#btnPlay .ico-play').style.display = on ? 'none' : '';
   $('#btnPlay .ico-pause').style.display = on ? '' : 'none';
-  State.autoT = 0;
+}
+
+function setPlaying(on) {
+  State.playing = on;
+  setPlayingUI(on);
+  if (on) runStart(); else runStop();
 }
 
 document.addEventListener('keydown', function (e) {
@@ -3872,17 +4161,9 @@ function frame(now) {
   FLOW.update(dt, t);
   updateBottles(dt);
   updateDetails(dt, t);
+  updateRun(dt, t);
   updateLabels();
 
-  /* 自动巡演 */
-  if (State.playing) {
-    State.autoT += dt;
-    if (State.autoT > 6.2) {
-      State.autoT = 0;
-      if (State.idx < STATIONS.length - 1) goTo(State.idx + 1);
-      else setPlaying(false);
-    }
-  }
 
   renderScene(dt);
 
@@ -3960,6 +4241,7 @@ const STATS = (function () {
   }
 
   applyLabels(PREF.labels !== false);
+  if (PREF.xray) { setXray(true); $('#btnXray').classList.add('on'); }
   applyImmersive(!!PREF.immersive);
 
   const fill = $('#ldFill');

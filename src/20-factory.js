@@ -56,8 +56,8 @@ const MAT = {
     roughness: 0.18, metalness: 0.0, transparent: true, opacity: 0.88
   }),
   beer: new THREE.MeshStandardMaterial({ 
-    color: 0xf0a02a, emissive: 0xd97a06, emissiveIntensity: 0.22,
-    roughness: 0.10, metalness: 0.0, transparent: true, opacity: 0.44,
+    color: 0xf0a02a, emissive: 0xc96f05, emissiveIntensity: 0.16,
+    roughness: 0.10, metalness: 0.0, transparent: true, opacity: 0.78,
     depthWrite: false, side: THREE.DoubleSide
   }),
   teal: new THREE.MeshStandardMaterial({ 
@@ -70,6 +70,37 @@ const MAT = {
 };
 
 Object.keys(MAT).forEach(function (k) { MAT[k].name = k; });
+
+
+/* =========================================================
+   液位容器
+   每台"装液体的"设备挂一只可升降的液柱，供产线联动与透视模式驱动。
+   ========================================================= */
+const VESSELS = [];
+
+function vesselLiquid(parent, r, y0, y1, station) {
+  const full = y1 - y0;
+  const m = new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r, full, 32, 1, false),
+    MAT.beer
+  );
+  m.position.y = y0 + full / 2;
+  m.scale.y = 0.001;
+  m.visible = false;
+  m.renderOrder = 1;
+  parent.add(m);
+  VESSELS.push({ mesh: m, baseY: y0, full: full, station: station });
+  return m;
+}
+
+/* 设置液位 0..1 */
+function setVesselLevel(v, lv) {
+  lv = clamp(lv, 0, 1);
+  const h = Math.max(0.001, v.full * lv);
+  v.mesh.scale.y = h / v.full;
+  v.mesh.position.y = v.baseY + h / 2;
+  v.mesh.visible = lv > 0.02;
+}
 
 /* ---- 基础构件 ---- */
 const FACTORY = new THREE.Group();
@@ -448,6 +479,7 @@ function gauge(x, y, z, s, faceZ) {
   j1.position.set(-R - 0.08, 1.20, 0);
   g.add(j1);
 
+  vesselLiquid(g, 0.86, 0.42, 1.84, 3);
   floorGlow(-4.25, -0.15, 3.4, 0xff8f1f, 0.24);
   const pl = new THREE.PointLight(0xff8a12, 1.5, 4.2, 2);
   pl.position.set(0, 1.15, 1.1);
@@ -479,11 +511,8 @@ let RAKE_ARM = null;
   rim.position.y = 1.19;
   g.add(rim);
 
-  /* 槽内麦汁液面 */
-  const bed = new THREE.Mesh(new THREE.CircleGeometry(R * 0.88, 44), MAT.wort);
-  bed.rotation.x = -Math.PI / 2;
-  bed.position.y = 0.98;
-  g.add(bed);
+  /* 槽内麦汁液位 */
+  vesselLiquid(g, R * 0.88, 0.48, 0.98, 3);
 
   /* 耙臂（玻璃盖下可见） */
   const rake = new THREE.Group();
@@ -562,6 +591,8 @@ let RAKE_ARM = null;
   hop.position.set(0.42, 2.86, 0.30);
   g.add(hop);
 
+  vesselLiquid(g, R * 0.80, 0.40, 2.42, 4);
+
   legs(g, R, 0.27, 6, 0, R * 0.88);
 
   /* 加热蒸汽管 */
@@ -591,6 +622,8 @@ let RAKE_ARM = null;
 
   /* 切向进料管——回旋沉淀的关键结构 */
   pipe([[R + 0.55, 1.20, -0.30], [R + 0.20, 1.05, -0.15], [R * 0.92, 0.95, 0.10], [R * 0.86, 0.95, 0.55]], 0.055, MAT.steel, g);
+
+  vesselLiquid(g, R * 0.92, 0.55, 1.00, 5);
 
   legs(g, R, 0.46, 6, 0, R * 0.92);
   floorGlow(1.20, 0.45, 2.6, 0xffa63a, 0.10);
@@ -697,6 +730,7 @@ function buildFermenter(x, z, scale, hero) {
   liquid.visible = false;
   liquid.renderOrder = 1;
   g.add(liquid);
+  VESSELS.push({ mesh: liquid, baseY: 1.02, full: liquidH, station: hero ? 7 : 7, hero: true });
 
   /* 锥底积液 */
   const coneLiq = new THREE.Mesh(latheGeo([

@@ -6,35 +6,65 @@
    ========================================================= */
 'use strict';
 
-/* ---- 通用粒子场 ---- */
+/* ---- 通用粒子场 ----
+   浅色背景下加色混合会把粒子"加白"到看不见，所以改成
+   带逐粒子 alpha 的普通混合：颜色正常、透明度单独控制。 */
+const PT_VERT = [
+  'uniform float uSize;',
+  'attribute float aAlpha;',
+  'attribute vec3 aColor;',
+  'varying float vA;',
+  'varying vec3 vC;',
+  'void main(){',
+  '  vA = aAlpha; vC = aColor;',
+  '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+  '  gl_PointSize = uSize * (300.0 / max(0.001, -mv.z));',
+  '  gl_Position = projectionMatrix * mv;',
+  '}'
+].join('\n');
+
+const PT_FRAG = [
+  'uniform sampler2D uMap;',
+  'varying float vA;',
+  'varying vec3 vC;',
+  'void main(){',
+  '  vec4 t = texture2D(uMap, gl_PointCoord);',
+  '  float a = t.a * vA;',
+  '  if (a < 0.004) discard;',
+  '  gl_FragColor = vec4(vC * t.rgb, a);',
+  '}'
+].join('\n');
+
 function makeParticles(count, opt) {
   opt = opt || {};
   const pos = new Float32Array(count * 3);
   const col = new Float32Array(count * 3);
+  const alp = new Float32Array(count);
   const data = [];
   for (let i = 0; i < count; i++) {
-    data.push({
-      x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
-      life: Math.random(), max: 1, size: 1
-    });
+    data.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: Math.random(), max: 1, size: 1 });
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const mat = new THREE.PointsMaterial({
-    size: opt.size || 0.3,
-    map: opt.map || null,
-    vertexColors: true,
+  geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(alp, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uSize: { value: opt.size || 0.3 },
+      uMap: { value: opt.map || null }
+    },
+    vertexShader: PT_VERT,
+    fragmentShader: PT_FRAG,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    sizeAttenuation: true,
-    opacity: opt.opacity === undefined ? 1 : opt.opacity
+    depthTest: true
   });
+
   const pts = new THREE.Points(geo, mat);
   pts.frustumCulled = false;
   scene.add(pts);
-  return { points: pts, pos: pos, col: col, data: data, geo: geo, count: count };
+  return { points: pts, pos: pos, col: col, alp: alp, data: data, geo: geo, count: count, mat: mat };
 }
 
 /* ---- 柔光点贴图 ---- */
@@ -89,13 +119,15 @@ const STEAM = (function () {
       field.pos[i * 3] = d.x;
       field.pos[i * 3 + 1] = d.y;
       field.pos[i * 3 + 2] = d.z;
-      const v = fade * 0.62;
-      field.col[i * 3] = v;
-      field.col[i * 3 + 1] = v * 0.98;
-      field.col[i * 3 + 2] = v * 0.92;
+      /* 浅色场景：蒸汽做成偏冷的淡灰，靠 alpha 淡出 */
+      field.col[i * 3] = 0.80;
+      field.col[i * 3 + 1] = 0.85;
+      field.col[i * 3 + 2] = 0.90;
+      field.alp[i] = fade * 0.80;
     }
     field.geo.attributes.position.needsUpdate = true;
-    field.geo.attributes.color.needsUpdate = true;
+    field.geo.attributes.aColor.needsUpdate = true;
+    field.geo.attributes.aAlpha.needsUpdate = true;
   }
   return { update: update };
 })();
@@ -168,13 +200,15 @@ const TANK_FX = FERMENTERS.map(function (rec) {
       field.pos[i * 3] = d.x + Math.sin(t * 2.2 + i) * 0.012 * S;
       field.pos[i * 3 + 1] = d.y;
       field.pos[i * 3 + 2] = d.z;
-      const v = 0.55 + 0.35 * Math.sin(t * 3 + i);
-      field.col[i * 3] = v * 0.95;
-      field.col[i * 3 + 1] = v * 0.62;
-      field.col[i * 3 + 2] = v * 0.18;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 3 + i);
+      field.col[i * 3] = 0.95;
+      field.col[i * 3 + 1] = 0.66;
+      field.col[i * 3 + 2] = 0.20;
+      field.alp[i] = 0.40 + 0.55 * pulse;
     }
     field.geo.attributes.position.needsUpdate = true;
-    field.geo.attributes.color.needsUpdate = true;
+    field.geo.attributes.aColor.needsUpdate = true;
+    field.geo.attributes.aAlpha.needsUpdate = true;
 
     for (let i = 0; i < YN; i++) {
       const p = yd[i];
@@ -216,12 +250,14 @@ const FLOW = (function () {
       it.curve.getPointAt(it.t, v);
       field.pos[i * 3] = v.x; field.pos[i * 3 + 1] = v.y; field.pos[i * 3 + 2] = v.z;
       const pulse = 0.55 + 0.45 * Math.sin(t * 4 + i);
-      field.col[i * 3] = pulse * 1.0;
-      field.col[i * 3 + 1] = pulse * 0.66;
-      field.col[i * 3 + 2] = pulse * 0.22;
+      field.col[i * 3] = 0.94;
+      field.col[i * 3 + 1] = 0.52;
+      field.col[i * 3 + 2] = 0.10;
+      field.alp[i] = 0.35 + 0.55 * pulse;
     }
     field.geo.attributes.position.needsUpdate = true;
-    field.geo.attributes.color.needsUpdate = true;
+    field.geo.attributes.aColor.needsUpdate = true;
+    field.geo.attributes.aAlpha.needsUpdate = true;
   }
   return { update: update };
 })();
